@@ -1,0 +1,173 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://edgegate.io/schemas/promptpack.schema.json",
+  "title": "PromptPack",
+  "description": "A versioned collection of prompts with expected outputs for regression testing",
+  "type": "object",
+  "required": ["promptpack_id", "version", "name", "cases"],
+  "additionalProperties": false,
+  "properties": {
+    "promptpack_id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+      "description": "Unique identifier for the PromptPack"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-((?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\\.(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\\+([0-9a-zA-Z-]+(?:\\.[0-9a-zA-Z-]+)*))?$",
+      "description": "Semantic version string"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Human-readable name"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional description"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      },
+      "maxItems": 20,
+      "uniqueItems": true,
+      "description": "Optional tags for categorization"
+    },
+    "defaults": {
+      "$ref": "#/$defs/generationParams",
+      "description": "Default generation parameters for all cases"
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/promptCase"
+      },
+      "minItems": 1,
+      "maxItems": 50,
+      "description": "List of prompt cases (max 50 per PRD hard limit)"
+    }
+  },
+  "$defs": {
+    "generationParams": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_new_tokens": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 256,
+          "default": 128,
+          "description": "Maximum new tokens to generate (max 256 per PRD)"
+        },
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2,
+          "default": 0.2,
+          "description": "Sampling temperature"
+        },
+        "top_p": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.95,
+          "description": "Nucleus sampling probability"
+        },
+        "seed": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 42,
+          "description": "Random seed for reproducibility"
+        }
+      }
+    },
+    "expectedOutput": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["json_schema", "regex", "exact", "none"],
+          "description": "Type of expected output validation"
+        },
+        "schema": {
+          "type": "object",
+          "description": "JSON Schema to validate output against (for type=json_schema)"
+        },
+        "pattern": {
+          "type": "string",
+          "description": "Regex pattern to match (for type=regex)"
+        },
+        "text": {
+          "type": "string",
+          "description": "Exact text to match (for type=exact)"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "type": { "const": "json_schema" } }
+          },
+          "then": {
+            "required": ["schema"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "regex" } }
+          },
+          "then": {
+            "required": ["pattern"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "type": { "const": "exact" } }
+          },
+          "then": {
+            "required": ["text"]
+          }
+        }
+      ]
+    },
+    "promptCase": {
+      "type": "object",
+      "required": ["case_id", "name", "prompt"],
+      "additionalProperties": false,
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+          "description": "Unique identifier for this case within the PromptPack"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 255,
+          "description": "Human-readable name for the case"
+        },
+        "prompt": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 32000,
+          "description": "The prompt text"
+        },
+        "expected": {
+          "$ref": "#/$defs/expectedOutput",
+          "description": "Expected output validation"
+        },
+        "overrides": {
+          "$ref": "#/$defs/generationParams",
+          "description": "Case-specific generation parameter overrides"
+        }
+      }
+    }
+  }
+}

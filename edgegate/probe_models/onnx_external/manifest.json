@@ -1,0 +1,32 @@
+{
+  "format": "onnx_external",
+  "version": "1.0",
+  "files": {
+    "onnx": {
+      "path": "model.onnx",
+      "sha256": "92b235e46f4342bf3a185e1ee780ad3cb2fb536ef4591474601aea7c8bd179a8",
+      "size_bytes": 672
+    },
+    "data": {
+      "path": "model.data",
+      "sha256": "bef6a58bdd8e6c07ad89ccf71dc1e5bb2268cf02fe8bdce7c84acf433269fc58",
+      "size_bytes": 1664
+    }
+  },
+  "input_specs": {
+    "x": {
+      "shape": [
+        1,
+        16
+      ],
+      "dtype": "float32"
+    }
+  },
+  "metadata": {
+    "architecture": "TinyMLP",
+    "opset_version": 14,
+    "source": "torch.onnx.export",
+    "torch_version": "2.8.0",
+    "onnx_version": "1.19.1"
+  }
+}

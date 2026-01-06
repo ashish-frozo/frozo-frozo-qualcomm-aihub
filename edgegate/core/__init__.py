@@ -1,0 +1,110 @@
+"""
+Configuration settings for EdgeGate.
+
+Uses pydantic-settings to load from environment variables and .env files.
+"""
+
+from functools import lru_cache
+from pathlib import Path
+from typing import Literal, Optional
+
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    """Application settings loaded from environment variables."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+    # Application
+    app_env: Literal["development", "staging", "production"] = "development"
+    app_debug: bool = False
+    api_host: str = "0.0.0.0"
+    api_port: int = 8000
+    storage_backend: Literal["local", "s3"] = "local"
+
+    # Database
+    database_url: str = Field(
+        default="postgresql+asyncpg://edgegate:edgegate_dev@localhost:5432/edgegate",
+        description="Async database URL (asyncpg)",
+    )
+    database_url_sync: str = Field(
+        default="postgresql://edgegate:edgegate_dev@localhost:5432/edgegate",
+        description="Sync database URL for migrations",
+    )
+
+    # Redis
+    redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
+
+    # S3/MinIO
+    s3_endpoint_url: str = "http://localhost:9000"
+    s3_access_key_id: str = "minioadmin"
+    s3_secret_access_key: str = "minioadmin"
+    s3_bucket_name: str = "edgegate-artifacts"
+    s3_region: str = "us-east-1"
+
+    # Security - Master Key (base64-encoded 32 bytes)
+    edgegenai_master_key: str = Field(
+        default="",
+        description="Base64-encoded 32-byte master key for envelope encryption",
+    )
+
+    # JWT
+    jwt_secret_key: str = Field(
+        default="",
+        description="Secret key for JWT signing (HS256)",
+    )
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 60
+
+    # Signing Keys
+    signing_keys_path: str = "./data/signing_keys"
+
+    # Hard Limits (PRD §5)
+    limit_model_upload_size_mb: int = 500
+    limit_promptpack_cases: int = 50
+    limit_devices_per_run: int = 5
+    limit_warmup_runs: int = 1
+    limit_repeats_default: int = 3
+    limit_repeats_max: int = 5
+    limit_max_new_tokens_default: int = 128
+    limit_max_new_tokens_max: int = 256
+    limit_run_timeout_default_minutes: int = 20
+    limit_run_timeout_max_minutes: int = 45
+    limit_workspace_concurrency: int = 1
+    limit_artifact_retention_days: int = 30
+
+    # AI Hub (optional, for integration tests)
+    qaihub_api_token: Optional[str] = None
+
+    @computed_field
+    @property
+    def limit_model_upload_size_bytes(self) -> int:
+        """Model upload size limit in bytes."""
+        return self.limit_model_upload_size_mb * 1024 * 1024
+
+    @computed_field
+    @property
+    def is_development(self) -> bool:
+        """Check if running in development mode."""
+        return self.app_env == "development"
+
+    @computed_field
+    @property
+    def signing_keys_dir(self) -> Path:
+        """Path to signing keys directory."""
+        return Path(self.signing_keys_path)
+
+
+@lru_cache
+def get_settings() -> Settings:
+    """Get cached settings instance."""
+    return Settings()

@@ -1,0 +1,218 @@
+# EdgeGate Regression Test Action
+#
+# This GitHub Action triggers EdgeGate regression tests when
+# model files are updated in your repository.
+#
+# Required secrets:
+#   EDGEGATE_WORKSPACE_ID: Your EdgeGate workspace UUID
+#   EDGEGATE_SIGNING_SECRET: HMAC signing secret for your workspace
+#   EDGEGATE_API_URL: EdgeGate API URL (e.g., https://api.edgegate.example.com)
+#   EDGEGATE_PIPELINE_ID: Pipeline UUID to run
+#
+# Usage:
+#   1. Add this file to .github/workflows/edgegate.yml
+#   2. Configure repository secrets
+#   3. Adjust the paths filter as needed
+
+name: EdgeGate Regression Tests
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'models/**/*.pt'
+      - 'models/**/*.onnx'
+      - 'models/**/*.tflite'
+  pull_request:
+    branches: [main, master]
+    paths:
+      - 'models/**/*.pt'
+      - 'models/**/*.onnx'
+      - 'models/**/*.tflite'
+
+env:
+  EDGEGATE_API_URL: ${{ secrets.EDGEGATE_API_URL }}
+  WORKSPACE_ID: ${{ secrets.EDGEGATE_WORKSPACE_ID }}
+
+jobs:
+  regression-test:
+    name: Run EdgeGate Regression Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Need previous commit to detect changes
+      
+      - name: Detect changed model files
+        id: changed
+        run: |
+          echo "Detecting changed model files..."
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'models/**/*.pt' 'models/**/*.onnx' 'models/**/*.tflite' || echo "")
+          if [ -z "$CHANGED" ]; then
+            echo "No model files changed"
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+          else
+            echo "Changed files:"
+            echo "$CHANGED"
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            # Get first changed model for testing
+            FIRST_MODEL=$(echo "$CHANGED" | head -1)
+            echo "model_path=$FIRST_MODEL" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: Upload model artifact
+        if: steps.changed.outputs.has_changes == 'true'
+        id: upload
+        run: |
+          MODEL_PATH="${{ steps.changed.outputs.model_path }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NONCE=$(uuidgen)
+          
+          # Read model file
+          MODEL_CONTENT=$(cat "$MODEL_PATH" | base64)
+          
+          # Create request body
+          BODY=$(cat <<EOF
+          {
+            "content": "$MODEL_CONTENT",
+            "filename": "$(basename $MODEL_PATH)"
+          }
+          EOF
+          )
+          
+          # Compute HMAC signature
+          MESSAGE="${TIMESTAMP}\n${NONCE}\n${BODY}"
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "${{ secrets.EDGEGATE_SIGNING_SECRET }}" | cut -d' ' -f2)
+          
+          # Upload artifact
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-EdgeGate-Workspace: $WORKSPACE_ID" \
+            -H "X-EdgeGate-Timestamp: $TIMESTAMP" \
+            -H "X-EdgeGate-Nonce: $NONCE" \
+            -H "X-EdgeGate-Signature: $SIGNATURE" \
+            -d "$BODY" \
+            "$EDGEGATE_API_URL/v1/workspaces/$WORKSPACE_ID/artifacts")
+          
+          ARTIFACT_ID=$(echo "$RESPONSE" | jq -r '.id')
+          echo "artifact_id=$ARTIFACT_ID" >> $GITHUB_OUTPUT
+          echo "Uploaded artifact: $ARTIFACT_ID"
+      
+      - name: Trigger regression test
+        if: steps.changed.outputs.has_changes == 'true'
+        id: trigger
+        run: |
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NONCE=$(uuidgen)
+          PIPELINE_ID="${{ secrets.EDGEGATE_PIPELINE_ID }}"
+          ARTIFACT_ID="${{ steps.upload.outputs.artifact_id }}"
+          
+          # Create request body
+          BODY=$(cat <<EOF
+          {
+            "pipeline_id": "$PIPELINE_ID",
+            "model_artifact_id": "$ARTIFACT_ID",
+            "commit_sha": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "pull_request": ${{ github.event.pull_request.number || 'null' }},
+            "workflow_run_id": "${{ github.run_id }}"
+          }
+          EOF
+          )
+          
+          # Compute HMAC signature
+          MESSAGE="${TIMESTAMP}\n${NONCE}\n${BODY}"
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "${{ secrets.EDGEGATE_SIGNING_SECRET }}" | cut -d' ' -f2)
+          
+          # Trigger run
+          RESPONSE=$(curl -s -X POST \
+            -H "Content-Type: application/json" \
+            -H "X-EdgeGate-Workspace: $WORKSPACE_ID" \
+            -H "X-EdgeGate-Timestamp: $TIMESTAMP" \
+            -H "X-EdgeGate-Nonce: $NONCE" \
+            -H "X-EdgeGate-Signature: $SIGNATURE" \
+            -d "$BODY" \
+            "$EDGEGATE_API_URL/v1/ci/github/run")
+          
+          RUN_ID=$(echo "$RESPONSE" | jq -r '.run_id')
+          echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          echo "Triggered run: $RUN_ID"
+      
+      - name: Poll for completion
+        if: steps.changed.outputs.has_changes == 'true'
+        run: |
+          RUN_ID="${{ steps.trigger.outputs.run_id }}"
+          MAX_ATTEMPTS=60  # 30 minutes with 30s intervals
+          ATTEMPT=0
+          
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            NONCE=$(uuidgen)
+            BODY=""
+            
+            MESSAGE="${TIMESTAMP}\n${NONCE}\n${BODY}"
+            SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "${{ secrets.EDGEGATE_SIGNING_SECRET }}" | cut -d' ' -f2)
+            
+            RESPONSE=$(curl -s -X GET \
+              -H "X-EdgeGate-Workspace: $WORKSPACE_ID" \
+              -H "X-EdgeGate-Timestamp: $TIMESTAMP" \
+              -H "X-EdgeGate-Nonce: $NONCE" \
+              -H "X-EdgeGate-Signature: $SIGNATURE" \
+              "$EDGEGATE_API_URL/v1/workspaces/$WORKSPACE_ID/runs/$RUN_ID")
+            
+            STATUS=$(echo "$RESPONSE" | jq -r '.status')
+            echo "Run status: $STATUS"
+            
+            case $STATUS in
+              "passed")
+                echo "✅ Regression tests PASSED!"
+                exit 0
+                ;;
+              "failed")
+                echo "❌ Regression tests FAILED!"
+                echo "Gates evaluation:"
+                echo "$RESPONSE" | jq '.gates_eval'
+                exit 1
+                ;;
+              "error")
+                echo "⚠️ Regression tests encountered an ERROR"
+                echo "Error: $(echo "$RESPONSE" | jq -r '.error_detail')"
+                exit 1
+                ;;
+              *)
+                echo "Waiting... (attempt $ATTEMPT of $MAX_ATTEMPTS)"
+                sleep 30
+                ;;
+            esac
+            
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+          
+          echo "⏰ Timeout waiting for run completion"
+          exit 1
+      
+      - name: Add PR comment (on failure)
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ EdgeGate regression tests failed. Please review the model changes.'
+            })
+      
+      - name: Add PR comment (on success)
+        if: success() && github.event_name == 'pull_request' && steps.changed.outputs.has_changes == 'true'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ EdgeGate regression tests passed!'
+            })

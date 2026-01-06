@@ -1,0 +1,136 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://edgegate.io/schemas/model_metadata.schema.json",
+    "title": "ModelMetadata",
+    "description": "Metadata describing an uploaded model artifact",
+    "type": "object",
+    "required": [
+        "model_id",
+        "name",
+        "packaging_type",
+        "input_specs"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "model_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_-]{1,64}$",
+            "description": "Unique identifier for the model"
+        },
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 255,
+            "description": "Human-readable model name"
+        },
+        "description": {
+            "type": "string",
+            "maxLength": 2000,
+            "description": "Optional model description"
+        },
+        "packaging_type": {
+            "type": "string",
+            "enum": [
+                "torch",
+                "onnx",
+                "onnx_external",
+                "aimet"
+            ],
+            "description": "Type of model packaging"
+        },
+        "input_specs": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/inputSpec"
+            },
+            "minProperties": 1,
+            "description": "Map of input name to input specification"
+        },
+        "framework_version": {
+            "type": "string",
+            "maxLength": 64,
+            "description": "Optional framework version (e.g., PyTorch 2.0, ONNX 1.14)"
+        },
+        "quantization": {
+            "$ref": "#/$defs/quantizationInfo",
+            "description": "Optional quantization information"
+        },
+        "tags": {
+            "type": "array",
+            "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+            },
+            "maxItems": 20,
+            "uniqueItems": true,
+            "description": "Optional tags for categorization"
+        }
+    },
+    "$defs": {
+        "inputSpec": {
+            "type": "object",
+            "required": [
+                "shape",
+                "dtype"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "shape": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer",
+                        "minimum": -1
+                    },
+                    "minItems": 1,
+                    "description": "Input tensor shape (-1 for dynamic dimensions)"
+                },
+                "dtype": {
+                    "type": "string",
+                    "enum": [
+                        "float32",
+                        "float16",
+                        "int32",
+                        "int64",
+                        "int8",
+                        "uint8",
+                        "bool"
+                    ],
+                    "description": "Data type of the input tensor"
+                }
+            }
+        },
+        "quantizationInfo": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+                "method": {
+                    "type": "string",
+                    "enum": [
+                        "none",
+                        "aimet",
+                        "ptq",
+                        "qat"
+                    ],
+                    "description": "Quantization method used"
+                },
+                "precision": {
+                    "type": "string",
+                    "enum": [
+                        "fp32",
+                        "fp16",
+                        "int8",
+                        "int4",
+                        "mixed"
+                    ],
+                    "description": "Model precision"
+                },
+                "calibration_samples": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Number of calibration samples used"
+                }
+            }
+        }
+    }
+}

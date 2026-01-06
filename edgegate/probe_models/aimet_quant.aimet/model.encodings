@@ -1,0 +1,101 @@
+{
+  "version": "1.0",
+  "quantizer_settings": {
+    "is_symmetric": "True",
+    "use_strict_symmetric": "False",
+    "use_unsigned_symmetric": "False",
+    "use_per_channel_quantization": "False"
+  },
+  "param_encodings": {
+    "fc1.weight": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "True",
+        "max": 1.0,
+        "min": -1.0,
+        "offset": 0,
+        "scale": 0.007874015748031496
+      }
+    ],
+    "fc1.bias": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "True",
+        "max": 1.0,
+        "min": -1.0,
+        "offset": 0,
+        "scale": 0.007874015748031496
+      }
+    ],
+    "fc2.weight": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "True",
+        "max": 1.0,
+        "min": -1.0,
+        "offset": 0,
+        "scale": 0.007874015748031496
+      }
+    ],
+    "fc2.bias": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "True",
+        "max": 1.0,
+        "min": -1.0,
+        "offset": 0,
+        "scale": 0.007874015748031496
+      }
+    ]
+  },
+  "output_encodings": {
+    "x": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "False",
+        "max": 1.0,
+        "min": 0.0,
+        "offset": 0,
+        "scale": 0.00392156862745098
+      }
+    ],
+    "/fc1/Gemm_output_0": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "False",
+        "max": 1.0,
+        "min": 0.0,
+        "offset": 0,
+        "scale": 0.00392156862745098
+      }
+    ],
+    "/relu/Relu_output_0": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "False",
+        "max": 1.0,
+        "min": 0.0,
+        "offset": 0,
+        "scale": 0.00392156862745098
+      }
+    ],
+    "output": [
+      {
+        "bitwidth": 8,
+        "dtype": "int",
+        "is_symmetric": "False",
+        "max": 1.0,
+        "min": 0.0,
+        "offset": 0,
+        "scale": 0.00392156862745098
+      }
+    ]
+  }
+}

@@ -1,0 +1,135 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://edgegate.io/schemas/workspace_capabilities.schema.json",
+    "title": "WorkspaceCapabilities",
+    "description": "Capabilities discovered by ProbeSuite for a workspace",
+    "type": "object",
+    "required": [
+        "version",
+        "probed_at",
+        "capabilities"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "version": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Schema version"
+        },
+        "probed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO8601 timestamp when probing completed"
+        },
+        "probe_run_id": {
+            "type": "string",
+            "format": "uuid",
+            "description": "ID of the probe run that generated this"
+        },
+        "probe_devices": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/probeDevice"
+            },
+            "maxItems": 2,
+            "description": "Devices used for probing (max 2: primary, secondary)"
+        },
+        "capabilities": {
+            "type": "array",
+            "items": {
+                "$ref": "#/$defs/capability"
+            },
+            "description": "List of discovered capabilities"
+        },
+        "raw_artifact_refs": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "description": "References to raw probe artifacts"
+        }
+    },
+    "$defs": {
+        "probeDevice": {
+            "type": "object",
+            "required": [
+                "device_id",
+                "device_name",
+                "role"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "device_id": {
+                    "type": "string",
+                    "description": "AI Hub device identifier"
+                },
+                "device_name": {
+                    "type": "string",
+                    "description": "Human-readable device name"
+                },
+                "role": {
+                    "type": "string",
+                    "enum": [
+                        "primary",
+                        "secondary"
+                    ],
+                    "description": "Role in probe execution"
+                }
+            }
+        },
+        "capability": {
+            "type": "object",
+            "required": [
+                "capability_id",
+                "available"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "capability_id": {
+                    "type": "string",
+                    "enum": [
+                        "TOKEN_VALIDATION",
+                        "DEVICE_LIST",
+                        "TARGET_QNN_DLC",
+                        "TARGET_TFLITE",
+                        "MODEL_TORCH",
+                        "MODEL_ONNX",
+                        "MODEL_ONNX_EXTERNAL_DATA",
+                        "MODEL_AIMET_ONNX_ENCODINGS",
+                        "COMPILE_JOB",
+                        "PROFILE_METRICS",
+                        "INFERENCE_OUTPUTS",
+                        "JOB_LOGS"
+                    ],
+                    "description": "Capability identifier per PRD §9.6"
+                },
+                "available": {
+                    "type": "boolean",
+                    "description": "Whether this capability is available"
+                },
+                "stability": {
+                    "type": "string",
+                    "enum": [
+                        "stable",
+                        "unstable",
+                        "unknown"
+                    ],
+                    "description": "Stability of this capability"
+                },
+                "probe_method": {
+                    "type": "string",
+                    "description": "Method used to probe this capability"
+                },
+                "response_shape_artifact_id": {
+                    "type": "string",
+                    "description": "Reference to artifact containing response shape"
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Optional notes about this capability"
+                }
+            }
+        }
+    }
+}

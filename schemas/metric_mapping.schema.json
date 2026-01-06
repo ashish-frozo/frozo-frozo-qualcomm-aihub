@@ -1,0 +1,103 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://edgegate.io/schemas/metric_mapping.schema.json",
+    "title": "MetricMapping",
+    "description": "Mapping of normalized metrics to AI Hub response JSONPaths, derived from probe artifacts",
+    "type": "object",
+    "required": [
+        "mapping_version",
+        "derived_from_artifacts",
+        "metrics"
+    ],
+    "additionalProperties": false,
+    "properties": {
+        "mapping_version": {
+            "type": "string",
+            "const": "1.0",
+            "description": "Schema version"
+        },
+        "derived_from_artifacts": {
+            "type": "array",
+            "items": {
+                "type": "string"
+            },
+            "minItems": 1,
+            "description": "Artifact IDs this mapping was derived from"
+        },
+        "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO8601 timestamp when mapping was created"
+        },
+        "metrics": {
+            "type": "object",
+            "additionalProperties": {
+                "$ref": "#/$defs/metricDefinition"
+            },
+            "description": "Map of metric name to its definition"
+        }
+    },
+    "$defs": {
+        "metricDefinition": {
+            "type": "object",
+            "required": [
+                "stability"
+            ],
+            "additionalProperties": false,
+            "properties": {
+                "json_path": {
+                    "type": [
+                        "string",
+                        "null"
+                    ],
+                    "description": "JSONPath to extract this metric from AI Hub response. NULL if unavailable."
+                },
+                "unit": {
+                    "type": "string",
+                    "enum": [
+                        "ms",
+                        "MB",
+                        "tokens/sec",
+                        "percent",
+                        "count",
+                        "bytes",
+                        "none"
+                    ],
+                    "description": "Unit of measurement"
+                },
+                "stability": {
+                    "type": "string",
+                    "enum": [
+                        "stable",
+                        "unstable",
+                        "unavailable"
+                    ],
+                    "description": "Stability of this metric based on probe results"
+                },
+                "metric_type": {
+                    "type": "string",
+                    "enum": [
+                        "latency",
+                        "throughput",
+                        "memory",
+                        "correctness",
+                        "other"
+                    ],
+                    "description": "Category of metric for flake detection thresholds"
+                },
+                "source_artifacts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Artifact IDs where this metric was observed"
+                },
+                "notes": {
+                    "type": "string",
+                    "maxLength": 1000,
+                    "description": "Optional notes about this metric"
+                }
+            }
+        }
+    }
+}

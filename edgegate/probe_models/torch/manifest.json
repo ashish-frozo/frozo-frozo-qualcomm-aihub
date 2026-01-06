@@ -1,0 +1,25 @@
+{
+  "format": "torchscript",
+  "version": "1.0",
+  "files": {
+    "model": {
+      "path": "model.pt",
+      "sha256": "5f13598e9cae92d00270ca5fc5b88b0ceaaa79976652202b29d722a011d0172e",
+      "size_bytes": 8345
+    }
+  },
+  "input_specs": {
+    "x": {
+      "shape": [
+        1,
+        16
+      ],
+      "dtype": "float32"
+    }
+  },
+  "metadata": {
+    "architecture": "TinyMLP",
+    "framework": "torch 2.8.0",
+    "trace_method": "torch.jit.trace"
+  }
+}

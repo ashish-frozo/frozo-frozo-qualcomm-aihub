@@ -11,6 +11,7 @@ tests/
 examples/
 docs/
 *.txt
-*.md
+# Allow README.md but ignore other docs if needed
+# docs/ is already ignored
 alembic/versions/*.py
 !alembic/versions

@@ -12,8 +12,9 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Set environment variable for API URL (will be overridden at runtime)
-ENV NEXT_PUBLIC_API_URL=http://localhost:8000
+# Build argument for API URL (passed from Railway env vars)
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
 
 # Build the application
 RUN npm run build

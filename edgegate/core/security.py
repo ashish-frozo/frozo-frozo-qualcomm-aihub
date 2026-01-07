@@ -83,7 +83,15 @@ class LocalKeyManagementService:
         if not master_key_b64:
             raise ValueError("Master key is required (EDGEGENAI_MASTER_KEY)")
 
-        self._master_key = base64.b64decode(master_key_b64)
+        # Add padding if missing and use urlsafe_b64decode
+        padding = len(master_key_b64) % 4
+        if padding:
+            master_key_b64 += "=" * (4 - padding)
+        
+        try:
+            self._master_key = base64.urlsafe_b64decode(master_key_b64)
+        except Exception as e:
+            raise ValueError(f"Invalid base64 master key: {e}")
         if len(self._master_key) != 32:
             raise ValueError("Master key must be exactly 32 bytes")
 

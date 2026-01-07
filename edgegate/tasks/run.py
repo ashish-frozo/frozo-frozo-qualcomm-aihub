@@ -34,8 +34,8 @@ from edgegate.services.evidence import EvidenceBundleBuilder
 settings = get_settings()
 celery_app = Celery(
     "edgegate",
-    broker=settings.redis_url,
-    backend=settings.redis_url,
+    broker=settings.celery_broker_url,
+    backend=settings.celery_result_backend,
 )
 
 # Configure Celery

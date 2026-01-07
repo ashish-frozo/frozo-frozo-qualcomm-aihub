@@ -55,9 +55,25 @@ class Settings(BaseSettings):
     )
 
     # Redis
-    redis_url: str = "redis://localhost:6379/0"
-    celery_broker_url: str = "redis://localhost:6379/0"
-    celery_result_backend: str = "redis://localhost:6379/1"
+    redis_url: str = Field(
+        default="redis://localhost:6379/0",
+        alias="REDIS_URL",
+        description="Redis connection URL",
+    )
+    
+    @computed_field
+    @property
+    def celery_broker_url(self) -> str:
+        """Celery broker URL, defaults to redis_url."""
+        return self.redis_url
+
+    @computed_field
+    @property
+    def celery_result_backend(self) -> str:
+        """Celery result backend, defaults to redis_url with db 1 if possible."""
+        if self.redis_url.endswith("/0"):
+            return self.redis_url[:-1] + "1"
+        return self.redis_url
 
     # S3/MinIO
     s3_endpoint_url: str = "http://localhost:9000"

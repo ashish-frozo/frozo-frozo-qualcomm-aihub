@@ -335,8 +335,8 @@ class Run(Base):
         Enum(RunStatus, values_callable=lambda x: [e.value for e in x]),
         default=RunStatus.QUEUED
     )
-    model_artifact_id: Mapped[UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("artifacts.id"), nullable=False
+    model_artifact_id: Mapped[Optional[PyUUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("artifacts.id"), nullable=True
     )
     normalized_metrics_json: Mapped[Optional[Dict[str, Any]]] = mapped_column(
         JSONB, nullable=True

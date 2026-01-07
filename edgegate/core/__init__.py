@@ -28,6 +28,21 @@ class Settings(BaseSettings):
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     storage_backend: Literal["local", "s3"] = "local"
+    
+    # CORS - comma-separated list of allowed origins, or "*" for all
+    cors_origins_str: str = Field(
+        default="*",
+        alias="cors_origins",
+        description="Comma-separated list of allowed CORS origins, or '*' for all",
+    )
+    
+    @computed_field
+    @property
+    def cors_origins(self) -> list[str]:
+        """Parse CORS origins from comma-separated string."""
+        if self.cors_origins_str == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins_str.split(",") if origin.strip()]
 
     # Database
     database_url: str = Field(

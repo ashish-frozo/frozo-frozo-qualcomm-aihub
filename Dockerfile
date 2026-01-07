@@ -51,4 +51,5 @@ EXPOSE 8000
 ENTRYPOINT ["./prestart.sh"]
 
 # Default command (can be overridden for worker)
-CMD ["uvicorn", "edgegate.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Use PORT env var for Railway compatibility, default to 8000
+CMD uvicorn edgegate.api.main:app --host 0.0.0.0 --port ${PORT:-8000}

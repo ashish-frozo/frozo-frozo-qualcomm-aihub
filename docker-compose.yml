@@ -60,6 +60,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://edgegate:edgegate_dev@postgres:5432/edgegate
+      - DATABASE_URL_SYNC=postgresql://edgegate:edgegate_dev@postgres:5432/edgegate
       - REDIS_URL=redis://redis:6379/0
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/1

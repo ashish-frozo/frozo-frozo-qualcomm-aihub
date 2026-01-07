@@ -17,6 +17,12 @@ if [ "$FORCE_MIGRATE" = "true" ]; then
     psql "$DATABASE_URL_SYNC" -c "DELETE FROM alembic_version;" 2>/dev/null || echo "No alembic_version table yet (this is fine)"
 fi
 
+# Stamp head option - marks the database as up-to-date without running migrations
+if [ "$STAMP_HEAD" = "true" ]; then
+    echo "STAMP_HEAD enabled - marking database as up-to-date..."
+    alembic stamp head
+fi
+
 # Debug: Alembic state
 echo "Alembic History:"
 alembic history

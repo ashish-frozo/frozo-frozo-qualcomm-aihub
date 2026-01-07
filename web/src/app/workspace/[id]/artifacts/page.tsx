@@ -36,6 +36,18 @@ export default function ArtifactsPage() {
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+    // Helper to safely extract error message from API response
+    const getErrorMessage = (data: any): string => {
+        if (typeof data.detail === 'string') return data.detail;
+        if (Array.isArray(data.detail) && data.detail.length > 0) {
+            const firstError = data.detail[0];
+            return firstError.msg || JSON.stringify(firstError);
+        }
+        if (data.detail?.message) return data.detail.message;
+        if (typeof data.detail === 'object') return JSON.stringify(data.detail);
+        return "An error occurred";
+    };
+
     useEffect(() => {
         fetchData();
     }, [workspaceId]);
@@ -99,7 +111,7 @@ export default function ArtifactsPage() {
                 fetchData();
             } else {
                 const data = await res.json();
-                setError(data.detail || "Failed to upload");
+                setError(getErrorMessage(data));
             }
         } catch (err: any) {
             setError(err.message || "Upload failed");

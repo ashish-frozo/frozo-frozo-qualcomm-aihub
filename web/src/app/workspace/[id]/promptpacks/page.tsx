@@ -86,10 +86,23 @@ export default function PromptPacksPage() {
             const content = await file.text();
             const json = JSON.parse(content);
 
+            // Validate required fields
+            if (!json.promptpack_id || !json.version) {
+                setError("Missing required fields: promptpack_id and version");
+                return;
+            }
+
+            // Transform to API expected format
+            const apiPayload = {
+                promptpack_id: json.promptpack_id,
+                version: json.version,
+                content: json, // The full JSON becomes the content
+            };
+
             const res = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/promptpacks`, {
                 method: "POST",
                 headers: { ...headers, "Content-Type": "application/json" },
-                body: content,
+                body: JSON.stringify(apiPayload),
             });
 
             if (res.ok) {
@@ -97,7 +110,14 @@ export default function PromptPacksPage() {
                 fetchData();
             } else {
                 const data = await res.json();
-                setError(data.detail || "Failed to upload");
+                // Handle nested error format
+                if (data.detail?.message) {
+                    setError(data.detail.message);
+                } else if (typeof data.detail === 'string') {
+                    setError(data.detail);
+                } else {
+                    setError("Failed to upload PromptPack");
+                }
             }
         } catch (err: any) {
             if (err instanceof SyntaxError) {

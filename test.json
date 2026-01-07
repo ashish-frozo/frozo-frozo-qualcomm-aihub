@@ -1,0 +1,16 @@
+{
+    "promptpack_id": "basic-qa",
+    "version": "1.0.0",
+    "name": "Basic QA Tests",
+    "description": "Simple test cases",
+    "cases": [
+        {
+            "case_id": "greeting",
+            "name": "Greeting Test",
+            "prompt": "Hello?",
+            "expected": {
+                "type": "none"
+            }
+        }
+    ]
+}

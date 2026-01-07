@@ -14,6 +14,7 @@ interface PromptPack {
     name: string;
     description: string;
     case_count: number;
+    published: boolean;
     created_at: string;
 }
 
@@ -29,6 +30,7 @@ export default function PromptPacksPage() {
     const [promptpacks, setPromptpacks] = useState<PromptPack[]>([]);
     const [loading, setLoading] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [publishing, setPublishing] = useState<string | null>(null);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +132,34 @@ export default function PromptPacksPage() {
             if (fileInputRef.current) {
                 fileInputRef.current.value = "";
             }
+        }
+    };
+
+    const publishPromptPack = async (promptpackId: string, version: string) => {
+        const headers = getAuthHeader();
+        if (!headers) return;
+
+        setPublishing(`${promptpackId}-${version}`);
+        setError("");
+        setSuccess("");
+
+        try {
+            const res = await fetch(
+                `${apiUrl}/v1/workspaces/${workspaceId}/promptpacks/${promptpackId}/${version}/publish`,
+                { method: "PUT", headers }
+            );
+
+            if (res.ok) {
+                setSuccess("PromptPack published successfully!");
+                fetchData(); // Refresh the list
+            } else {
+                const data = await res.json();
+                setError(data.detail || "Failed to publish");
+            }
+        } catch (err: any) {
+            setError(err.message || "Publish failed");
+        } finally {
+            setPublishing(null);
         }
     };
 
@@ -235,13 +265,20 @@ export default function PromptPacksPage() {
                                                 </svg>
                                             </div>
                                             <div>
-                                                <div className="text-white font-medium">{pp.name}</div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-white font-medium">{pp.name}</span>
+                                                    {pp.published && (
+                                                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                                                            Published
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <div className="text-sm text-slate-400">
                                                     {pp.promptpack_id} • v{pp.version}
                                                 </div>
                                             </div>
                                         </div>
-                                        <div className="flex items-center gap-6">
+                                        <div className="flex items-center gap-4">
                                             <div className="text-right">
                                                 <div className="text-white font-medium">{pp.case_count}</div>
                                                 <div className="text-sm text-slate-400">Cases</div>
@@ -250,6 +287,16 @@ export default function PromptPacksPage() {
                                                 <div className="text-white">{new Date(pp.created_at).toLocaleDateString()}</div>
                                                 <div className="text-sm text-slate-400">Created</div>
                                             </div>
+                                            {!pp.published && (
+                                                <Button
+                                                    size="sm"
+                                                    onClick={() => publishPromptPack(pp.promptpack_id, pp.version)}
+                                                    disabled={publishing === `${pp.promptpack_id}-${pp.version}`}
+                                                    className="bg-green-600 hover:bg-green-700"
+                                                >
+                                                    {publishing === `${pp.promptpack_id}-${pp.version}` ? "Publishing..." : "Publish"}
+                                                </Button>
+                                            )}
                                         </div>
                                     </CardContent>
                                 </Card>

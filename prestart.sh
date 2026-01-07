@@ -6,10 +6,11 @@ echo "=== EdgeGate Prestart ==="
 echo "APP_ENV: $APP_ENV"
 echo "DATABASE_URL_SYNC is set: $([ -n "$DATABASE_URL_SYNC" ] && echo 'yes' || echo 'NO!')"
 
-# Force migrate option - resets alembic version and re-runs from scratch
+# Force migrate option - directly clears alembic_version table
 if [ "$FORCE_MIGRATE" = "true" ]; then
-    echo "FORCE_MIGRATE enabled - resetting alembic version..."
-    alembic stamp base || echo "No existing version to reset"
+    echo "FORCE_MIGRATE enabled - clearing alembic_version table..."
+    # Use psql to directly delete the version marker
+    psql "$DATABASE_URL_SYNC" -c "DELETE FROM alembic_version;" 2>/dev/null || echo "No alembic_version table yet (this is fine)"
 fi
 
 # Run migrations

@@ -40,6 +40,15 @@ export function Sidebar({ workspaceId, workspaceName }: SidebarProps) {
             ),
         },
         {
+            name: "Artifacts",
+            href: `/workspace/${workspaceId}/artifacts`,
+            icon: (
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            ),
+        },
+        {
             name: "Runs",
             href: `/workspace/${workspaceId}/runs`,
             icon: (
@@ -88,8 +97,8 @@ export function Sidebar({ workspaceId, workspaceName }: SidebarProps) {
                         key={item.name}
                         href={item.href}
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors ${isActive(item.href)
-                                ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-                                : "text-slate-400 hover:text-white hover:bg-slate-800/50"
+                            ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
+                            : "text-slate-400 hover:text-white hover:bg-slate-800/50"
                             }`}
                     >
                         {item.icon}

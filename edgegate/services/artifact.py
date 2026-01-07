@@ -339,6 +339,47 @@ class ArtifactService:
             expires_at=artifact.expires_at,
         )
 
+    async def list_all(
+        self,
+        workspace: Workspace,
+        kind: Optional[ArtifactKind] = None,
+    ) -> list[ArtifactInfo]:
+        """
+        List all artifacts in a workspace.
+        
+        Args:
+            workspace: The workspace.
+            kind: Filter by artifact type (optional).
+            
+        Returns:
+            List of ArtifactInfo.
+        """
+        from typing import List
+        
+        query = select(Artifact).where(Artifact.workspace_id == workspace.id)
+        
+        if kind:
+            query = query.where(Artifact.kind == kind)
+        
+        query = query.order_by(Artifact.created_at.desc())
+        
+        result = await self.session.execute(query)
+        artifacts = result.scalars().all()
+        
+        return [
+            ArtifactInfo(
+                id=a.id,
+                kind=a.kind,
+                sha256=a.sha256,
+                size_bytes=a.size_bytes,
+                original_filename=a.original_filename,
+                storage_url=a.storage_url,
+                created_at=a.created_at,
+                expires_at=a.expires_at,
+            )
+            for a in artifacts
+        ]
+
     # ========================================================================
     # Helper Methods
     # ========================================================================

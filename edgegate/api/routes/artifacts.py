@@ -117,6 +117,57 @@ async def upload_artifact(
 
 
 @router.get(
+    "/workspaces/{workspace_id}/artifacts",
+    response_model=List[ArtifactResponse],
+    summary="List artifacts",
+)
+async def list_artifacts(
+    workspace: WorkspaceAdmin,
+    current_user: CurrentUser,
+    kind: Optional[str] = None,
+    session: AsyncSession = Depends(get_session),
+) -> List[ArtifactResponse]:
+    """
+    List artifacts in the workspace.
+    
+    Can be filtered by artifact kind.
+    
+    Requires at least admin role.
+    """
+    service = ArtifactService(session)
+    
+    # Map kind filter if provided
+    kind_filter = None
+    if kind:
+        kind_map = {
+            "model": ArtifactKind.MODEL,
+            "bundle": ArtifactKind.BUNDLE,
+            "probe_raw": ArtifactKind.PROBE_RAW,
+            "capabilities": ArtifactKind.CAPABILITIES,
+            "metric_mapping": ArtifactKind.METRIC_MAPPING,
+            "promptpack": ArtifactKind.PROMPTPACK,
+            "other": ArtifactKind.OTHER,
+        }
+        kind_filter = kind_map.get(kind)
+    
+    results = await service.list_all(workspace=workspace, kind=kind_filter)
+    
+    return [
+        ArtifactResponse(
+            id=r.id,
+            kind=r.kind.value,
+            sha256=r.sha256,
+            size_bytes=r.size_bytes,
+            original_filename=r.original_filename,
+            storage_url=r.storage_url,
+            created_at=r.created_at,
+            expires_at=r.expires_at,
+        )
+        for r in results
+    ]
+
+
+@router.get(
     "/workspaces/{workspace_id}/artifacts/{artifact_id}",
     response_model=ArtifactResponse,
     summary="Get artifact info",

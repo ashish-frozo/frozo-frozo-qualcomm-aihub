@@ -57,7 +57,7 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = Field(
         default="redis://localhost:6379/0",
-        alias="REDIS_URL",
+        validation_alias=AliasChoices("REDIS_URL", "REDISURL", "redis_url"),
         description="Redis connection URL",
     )
     

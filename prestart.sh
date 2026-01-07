@@ -5,6 +5,7 @@ set -e  # Exit on error
 echo "=== EdgeGate Prestart ==="
 echo "APP_ENV: $APP_ENV"
 echo "DATABASE_URL_SYNC is set: $([ -n "$DATABASE_URL_SYNC" ] && echo 'yes' || echo 'NO!')"
+echo "REDIS_URL is set: $([ -n "$REDIS_URL" ] && echo 'yes' || echo 'no')"
 
 # Debug: List migration files
 echo "Migration files in alembic/versions:"

@@ -20,6 +20,7 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        populate_by_name=True,
     )
 
     # Application
@@ -57,7 +58,7 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = Field(
         default="redis://localhost:6379/0",
-        validation_alias=AliasChoices("REDIS_URL", "REDISURL", "redis_url"),
+        alias="REDIS_URL",
         description="Redis connection URL",
     )
     

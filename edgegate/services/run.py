@@ -325,7 +325,7 @@ class RunDetail:
     pipeline_name: str
     status: RunStatus
     trigger: RunTrigger
-    model_artifact_id: UUID
+    model_artifact_id: Optional[UUID]
     normalized_metrics: Optional[Dict[str, Any]]
     gates_eval: Optional[Dict[str, Any]]
     bundle_artifact_id: Optional[UUID]
@@ -355,7 +355,7 @@ class RunService:
         self,
         workspace: Workspace,
         pipeline_id: UUID,
-        model_artifact_id: UUID,
+        model_artifact_id: Optional[UUID],
         trigger: RunTrigger,
         user: Optional[User] = None,
     ) -> RunInfo:
@@ -365,7 +365,7 @@ class RunService:
         Args:
             workspace: The workspace.
             pipeline_id: Pipeline to execute.
-            model_artifact_id: Model artifact to test.
+            model_artifact_id: Model artifact to test (optional for manual runs).
             trigger: How the run was triggered.
             user: User triggering (optional for CI).
             
@@ -374,17 +374,18 @@ class RunService:
             
         Raises:
             PipelineNotFoundError: If pipeline doesn't exist.
-            ArtifactNotFoundError: If artifact doesn't exist.
+            ArtifactNotFoundError: If artifact doesn't exist (when provided).
         """
         # Verify pipeline exists
         pipeline = await self._get_pipeline(workspace.id, pipeline_id)
         if not pipeline:
             raise PipelineNotFoundError(pipeline_id)
 
-        # Verify artifact exists
-        artifact = await self._get_artifact(workspace.id, model_artifact_id)
-        if not artifact:
-            raise ArtifactNotFoundError(model_artifact_id)
+        # Verify artifact exists (only if provided)
+        if model_artifact_id:
+            artifact = await self._get_artifact(workspace.id, model_artifact_id)
+            if not artifact:
+                raise ArtifactNotFoundError(model_artifact_id)
 
         # Create run
         run = Run(

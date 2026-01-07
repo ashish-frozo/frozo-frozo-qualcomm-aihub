@@ -38,7 +38,7 @@ class RunCreate(BaseModel):
     """Request body for creating a Run."""
 
     pipeline_id: UUID
-    model_artifact_id: UUID
+    model_artifact_id: Optional[UUID] = None  # Optional for manual runs
     trigger: str = "manual"  # manual, ci, scheduled
 
 

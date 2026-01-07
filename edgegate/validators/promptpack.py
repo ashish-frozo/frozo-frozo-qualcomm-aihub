@@ -1,7 +1,7 @@
 """
 PromptPack JSON schema validator.
 
-Validates PromptPack documents against the schema defined in schemas/promptpack.schema.json.
+Validates PromptPack documents against the schema defined in edgegate/schemas/promptpack.schema.json.
 Implements PRD §12 requirements including canonicalization rules.
 """
 
@@ -40,7 +40,7 @@ class PromptPackValidator:
         if schema_path is None:
             # Find schema relative to this file
             schema_path = (
-                Path(__file__).parent.parent.parent / "schemas" / "promptpack.schema.json"
+                Path(__file__).parent.parent / "schemas" / "promptpack.schema.json"
             )
 
         if not schema_path.exists():

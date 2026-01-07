@@ -1,7 +1,7 @@
 """
 Model metadata JSON schema validator.
 
-Validates model metadata documents against the schema defined in schemas/model_metadata.schema.json.
+Validates model metadata documents against the schema defined in edgegate/schemas/model_metadata.schema.json.
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ class ModelMetadataValidator:
         """
         if schema_path is None:
             schema_path = (
-                Path(__file__).parent.parent.parent / "schemas" / "model_metadata.schema.json"
+                Path(__file__).parent.parent / "schemas" / "model_metadata.schema.json"
             )
 
         if not schema_path.exists():

@@ -92,6 +92,11 @@ aihub = [
 [project.scripts]
 edgegate = "edgegate.cli:main"
 
+[tool.hatch.build]
+include = [
+  "edgegate",
+]
+
 [tool.hatch.build.targets.wheel]
 packages = ["edgegate"]
 

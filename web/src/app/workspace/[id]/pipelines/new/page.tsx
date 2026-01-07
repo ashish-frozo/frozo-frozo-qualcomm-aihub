@@ -30,12 +30,15 @@ const AVAILABLE_DEVICES = [
     { name: "Snapdragon 7+ Gen 2", id: "sm7550" },
 ];
 
-// Standard gate metrics
+// Standard gate metrics (must match API's VALID_METRICS)
 const AVAILABLE_METRICS = [
-    { id: "peak_ram_mb", name: "Peak RAM (MB)", defaultOp: "lte", defaultValue: 3500 },
-    { id: "tokens_per_sec", name: "Tokens/Second", defaultOp: "gte", defaultValue: 10 },
+    { id: "peak_memory_mb", name: "Peak Memory (MB)", defaultOp: "lte", defaultValue: 3500 },
+    { id: "inference_time_ms", name: "Inference Time (ms)", defaultOp: "lte", defaultValue: 1000 },
     { id: "ttft_ms", name: "Time to First Token (ms)", defaultOp: "lte", defaultValue: 1500 },
-    { id: "correctness.aggregate_score", name: "Correctness Score", defaultOp: "gte", defaultValue: 0.9 },
+    { id: "tps", name: "Tokens/Second", defaultOp: "gte", defaultValue: 10 },
+    { id: "npu_compute_percent", name: "NPU Compute %", defaultOp: "gte", defaultValue: 50 },
+    { id: "gpu_compute_percent", name: "GPU Compute %", defaultOp: "lte", defaultValue: 30 },
+    { id: "cpu_compute_percent", name: "CPU Compute %", defaultOp: "lte", defaultValue: 20 },
 ];
 
 export default function NewPipelinePage() {
@@ -53,8 +56,8 @@ export default function NewPipelinePage() {
     const [selectedDevices, setSelectedDevices] = useState<string[]>(["sm8650"]);
     const [selectedPromptpack, setSelectedPromptpack] = useState<{ id: string; version: string } | null>(null);
     const [gates, setGates] = useState([
-        { metric: "peak_ram_mb", operator: "lte", threshold: 3500 },
-        { metric: "correctness.aggregate_score", operator: "gte", threshold: 0.9 },
+        { metric: "peak_memory_mb", operator: "lte", threshold: 3500 },
+        { metric: "tps", operator: "gte", threshold: 10 },
     ]);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -233,8 +236,8 @@ export default function NewPipelinePage() {
                                             type="button"
                                             onClick={() => toggleDevice(device.id)}
                                             className={`p-4 rounded-lg border text-left transition-colors ${selectedDevices.includes(device.id)
-                                                    ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
-                                                    : "bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600"
+                                                ? "bg-cyan-500/10 border-cyan-500/50 text-cyan-400"
+                                                : "bg-slate-800/50 border-slate-700 text-slate-300 hover:border-slate-600"
                                                 }`}
                                         >
                                             <div className="font-medium">{device.name}</div>
@@ -271,8 +274,8 @@ export default function NewPipelinePage() {
                                                 type="button"
                                                 onClick={() => setSelectedPromptpack({ id: pp.promptpack_id, version: pp.version })}
                                                 className={`w-full p-4 rounded-lg border text-left transition-colors ${selectedPromptpack?.id === pp.promptpack_id && selectedPromptpack?.version === pp.version
-                                                        ? "bg-cyan-500/10 border-cyan-500/50"
-                                                        : "bg-slate-800/50 border-slate-700 hover:border-slate-600"
+                                                    ? "bg-cyan-500/10 border-cyan-500/50"
+                                                    : "bg-slate-800/50 border-slate-700 hover:border-slate-600"
                                                     }`}
                                             >
                                                 <div className="font-medium text-white">{pp.name}</div>

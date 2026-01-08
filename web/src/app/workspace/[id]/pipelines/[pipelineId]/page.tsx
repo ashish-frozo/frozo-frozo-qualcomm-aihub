@@ -23,6 +23,12 @@ interface PipelineDetail {
     updated_at: string;
 }
 
+interface Artifact {
+    id: string;
+    original_filename: string | null;
+    kind: string;
+}
+
 interface Workspace {
     id: string;
     name: string;
@@ -35,6 +41,8 @@ export default function PipelineDetailPage() {
     const pipelineId = params.pipelineId as string;
     const [workspace, setWorkspace] = useState<Workspace | null>(null);
     const [pipeline, setPipeline] = useState<PipelineDetail | null>(null);
+    const [artifacts, setArtifacts] = useState<Artifact[]>([]);
+    const [selectedModelId, setSelectedModelId] = useState<string>("");
     const [loading, setLoading] = useState(true);
     const [triggering, setTriggering] = useState(false);
     const [deleting, setDeleting] = useState(false);
@@ -83,9 +91,10 @@ export default function PipelineDetailPage() {
         if (!headers) return;
 
         try {
-            const [wsRes, pipelineRes] = await Promise.all([
+            const [wsRes, pipelineRes, artifactsRes] = await Promise.all([
                 fetch(`${apiUrl}/v1/workspaces/${workspaceId}`, { headers }),
                 fetch(`${apiUrl}/v1/workspaces/${workspaceId}/pipelines/${pipelineId}`, { headers }),
+                fetch(`${apiUrl}/v1/workspaces/${workspaceId}/artifacts?kind=model`, { headers }),
             ]);
 
             if (wsRes.ok) {
@@ -93,6 +102,13 @@ export default function PipelineDetailPage() {
             }
             if (pipelineRes.ok) {
                 setPipeline(await pipelineRes.json());
+            }
+            if (artifactsRes.ok) {
+                const artifactsData = await artifactsRes.json();
+                setArtifacts(artifactsData);
+                if (artifactsData.length > 0) {
+                    setSelectedModelId(artifactsData[0].id);
+                }
             }
         } catch (err) {
             console.error("Failed to fetch data", err);
@@ -110,10 +126,20 @@ export default function PipelineDetailPage() {
         setSuccess("");
 
         try {
+            if (!selectedModelId) {
+                setError("Please select a model artifact first");
+                setTriggering(false);
+                return;
+            }
+
             const res = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/runs`, {
                 method: "POST",
                 headers: { ...headers, "Content-Type": "application/json" },
-                body: JSON.stringify({ pipeline_id: pipelineId }),
+                body: JSON.stringify({
+                    pipeline_id: pipelineId,
+                    model_artifact_id: selectedModelId,
+                    trigger: "manual"
+                }),
             });
 
             if (res.ok) {
@@ -208,10 +234,26 @@ export default function PipelineDetailPage() {
                             </div>
                             <h1 className="text-2xl font-bold text-white">{pipeline.name}</h1>
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex gap-3 items-center">
+                            {artifacts.length > 0 && (
+                                <div className="flex flex-col mr-2">
+                                    <label className="text-xs text-slate-500 mb-1 ml-1">Select Model</label>
+                                    <select
+                                        value={selectedModelId}
+                                        onChange={(e) => setSelectedModelId(e.target.value)}
+                                        className="bg-slate-900 border border-slate-700 text-white text-sm rounded-lg focus:ring-cyan-500 focus:border-cyan-500 block w-full p-2"
+                                    >
+                                        {artifacts.map((art) => (
+                                            <option key={art.id} value={art.id}>
+                                                {art.original_filename || `Model ${art.id.slice(0, 8)}`}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            )}
                             <Button
                                 onClick={triggerRun}
-                                disabled={triggering}
+                                disabled={triggering || artifacts.length === 0}
                                 className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
                             >
                                 {triggering ? "Triggering..." : "⚡ Trigger Run"}
@@ -226,6 +268,22 @@ export default function PipelineDetailPage() {
                             </Button>
                         </div>
                     </div>
+
+                    {artifacts.length === 0 && (
+                        <div className="mb-6 p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-400 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span>You need to upload a model artifact before you can trigger a run.</span>
+                            </div>
+                            <Link href={`/workspace/${workspaceId}/artifacts`}>
+                                <Button size="sm" variant="outline" className="border-amber-500/50 text-amber-400 hover:bg-amber-500/10">
+                                    Upload Model
+                                </Button>
+                            </Link>
+                        </div>
+                    )}
 
                     {/* Feedback */}
                     {error && (

@@ -263,9 +263,16 @@ class ArtifactService:
         import boto3
         import asyncio
         
+        # Redact credentials for logging
+        endpoint = self.settings.s3_endpoint_url or "AWS Default"
+        access_key = self.settings.s3_access_key_id[:4] + "..." if self.settings.s3_access_key_id else "None"
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"S3 Upload: Endpoint={endpoint}, Bucket={self.settings.s3_bucket_name}, AccessKey={access_key}")
+        
         s3 = boto3.client(
             "s3",
-            endpoint_url=self.settings.s3_endpoint_url,
+            endpoint_url=self.settings.s3_endpoint_url or None,
             aws_access_key_id=self.settings.s3_access_key_id,
             aws_secret_access_key=self.settings.s3_secret_access_key,
             region_name=self.settings.s3_region,
@@ -293,9 +300,16 @@ class ArtifactService:
             raise ArtifactError(f"Invalid S3 URL: {storage_url}")
         bucket, key = parts
         
+        # Redact credentials for logging
+        endpoint = self.settings.s3_endpoint_url or "AWS Default"
+        access_key = self.settings.s3_access_key_id[:4] + "..." if self.settings.s3_access_key_id else "None"
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"S3 Download: Endpoint={endpoint}, Bucket={bucket}, AccessKey={access_key}")
+        
         s3 = boto3.client(
             "s3",
-            endpoint_url=self.settings.s3_endpoint_url,
+            endpoint_url=self.settings.s3_endpoint_url or None,
             aws_access_key_id=self.settings.s3_access_key_id,
             aws_secret_access_key=self.settings.s3_secret_access_key,
             region_name=self.settings.s3_region,

@@ -227,6 +227,12 @@ def download_artifact(storage_url: str, filename: str) -> str:
     os.close(fd)
     
     try:
+        # Redact credentials for logging
+        endpoint = settings.s3_endpoint_url or "AWS Default"
+        access_key = settings.s3_access_key_id[:4] + "..." if settings.s3_access_key_id else "None"
+        
+        logger.info(f"S3 Config: Endpoint={endpoint}, Bucket={bucket}, AccessKey={access_key}, Region={settings.s3_region}")
+        
         s3 = boto3.client(
             "s3",
             endpoint_url=settings.s3_endpoint_url or None,
@@ -236,12 +242,21 @@ def download_artifact(storage_url: str, filename: str) -> str:
         )
         
         logger.info(f"Downloading artifact from {storage_url} to {path}")
+        # Use download_file which is efficient for large files
         s3.download_file(bucket, key, path)
+        
+        if os.path.exists(path):
+            size = os.path.getsize(path)
+            logger.info(f"Successfully downloaded {size} bytes to {path}")
+        
         return path
     except Exception as e:
         if os.path.exists(path):
             os.remove(path)
         logger.error(f"Failed to download artifact from S3: {e}")
+        # If it's a 403, it might be a permission issue or a wrong endpoint
+        if "403" in str(e):
+            logger.error("S3 403 Forbidden: Please check your S3 credentials, bucket name, and endpoint URL.")
         raise
 
 

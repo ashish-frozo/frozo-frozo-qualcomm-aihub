@@ -30,25 +30,31 @@ from edgegate.core.security import LocalKeyManagementService
 from edgegate.services.evidence import EvidenceBundleBuilder
 
 
-# Initialize Celery
-settings = get_settings()
-celery_app = Celery(
-    "edgegate",
-    broker=settings.celery_broker_url,
-    backend=settings.celery_result_backend,
-)
+# Initialize Celery with lazy configuration
+# We don't pass broker/backend here - they'll be configured below
+celery_app = Celery("edgegate")
 
-# Configure Celery
-celery_app.conf.update(
-    task_serializer="json",
-    accept_content=["json"],
-    result_serializer="json",
-    timezone="UTC",
-    enable_utc=True,
-    task_track_started=True,
-    task_time_limit=3600,  # 1 hour max
-    worker_prefetch_multiplier=1,  # Fair scheduling
-)
+
+def configure_celery():
+    """Configure Celery with settings from environment."""
+    settings = get_settings()
+    celery_app.conf.update(
+        broker_url=settings.celery_broker_url,
+        result_backend=settings.celery_result_backend,
+        task_serializer="json",
+        accept_content=["json"],
+        result_serializer="json",
+        timezone="UTC",
+        enable_utc=True,
+        task_track_started=True,
+        task_time_limit=3600,  # 1 hour max
+        worker_prefetch_multiplier=1,  # Fair scheduling
+    )
+    return settings
+
+
+# Configure Celery immediately (but after the app is created)
+settings = configure_celery()
 
 logger = get_task_logger(__name__)
 

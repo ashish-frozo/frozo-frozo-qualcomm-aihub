@@ -10,6 +10,7 @@ interface Run {
     id: string;
     status: string;
     created_at: string;
+    pipeline_name: string;
     normalized_metrics: Record<string, number> | null;
     gates_eval: {
         passed: boolean;
@@ -21,9 +22,6 @@ interface Run {
             passed: boolean;
         }>;
     } | null;
-    pipeline: {
-        name: string;
-    };
 }
 
 export default function RunDetailPage() {
@@ -121,7 +119,7 @@ export default function RunDetailPage() {
                         {run.status.toUpperCase()}
                     </span>
                     <div>
-                        <h1 className="text-2xl font-bold text-white">{run.pipeline?.name || "Run"}</h1>
+                        <h1 className="text-2xl font-bold text-white">{run.pipeline_name || "Run"}</h1>
                         <p className="text-slate-400">
                             Started {new Date(run.created_at).toLocaleString()}
                         </p>

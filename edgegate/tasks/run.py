@@ -25,9 +25,8 @@ from celery import Celery, chain
 from celery.utils.log import get_task_logger
 
 from edgegate.core import get_settings
-from edgegate.db import Run, RunStatus, Artifact, ArtifactKind, Pipeline, PromptPack
-from edgegate.db.models import Workspace, IntegrationCredential
-from edgegate.core.security import LocalKeyManagementService
+from edgegate.db import Run, RunStatus, Artifact, ArtifactKind, Pipeline, PromptPack, Integration, IntegrationProvider, IntegrationStatus
+from edgegate.core.security import LocalKeyManagementService, envelope_decrypt
 from edgegate.services.evidence import EvidenceBundleBuilder
 from edgegate.aihub.client import QAIHubClient, ProfileResult, JobStatus
 import asyncio
@@ -112,18 +111,21 @@ def get_aihub_token_for_workspace(workspace_id: str) -> Optional[str]:
     try:
         with SyncSession() as session:
             # First try to get workspace-specific credential
-            stmt = select(IntegrationCredential).where(
-                IntegrationCredential.workspace_id == UUID(workspace_id),
-                IntegrationCredential.provider == "qaihub",
+            stmt = select(Integration).where(
+                Integration.workspace_id == UUID(workspace_id),
+                Integration.provider == IntegrationProvider.QAIHUB,
+                Integration.status == IntegrationStatus.ACTIVE,
             )
-            cred = session.execute(stmt).scalar_one_or_none()
+            integration = session.execute(stmt).scalar_one_or_none()
             
-            if cred and cred.encrypted_data:
+            if integration and integration.token_blob:
                 # Decrypt the token
-                kms = LocalKeyManagementService()
-                decrypted = kms.decrypt_field(cred.encrypted_data)
-                cred_data = json.loads(decrypted)
-                return cred_data.get("api_token")
+                kms = LocalKeyManagementService(
+                    master_key_b64=settings.edgegenai_master_key,
+                    signing_keys_path=settings.signing_keys_dir,
+                )
+                decrypted = envelope_decrypt(integration.token_blob, kms)
+                return decrypted.decode()
             
             # Fall back to global setting
             return settings.qaihub_api_token

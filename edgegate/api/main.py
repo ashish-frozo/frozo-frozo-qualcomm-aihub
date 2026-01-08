@@ -38,20 +38,6 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     print(f"Starting EdgeGate API in {settings.app_env} mode")
     
-    # Log Redis URL (redacted)
-    redis_url = settings.redis_url
-    if "@" in redis_url:
-        # Redact password: redis://user:pass@host:port/db -> redis://user:***@host:port/db
-        prefix, rest = redis_url.split("@", 1)
-        if ":" in prefix:
-            base, _ = prefix.rsplit(":", 1)
-            redacted_url = f"{base}:***@{rest}"
-        else:
-            redacted_url = f"***@{rest}"
-    else:
-        redacted_url = redis_url
-    print(f"INFO:     Using Redis URL: {redacted_url}")
-    
     yield
     
     # Shutdown

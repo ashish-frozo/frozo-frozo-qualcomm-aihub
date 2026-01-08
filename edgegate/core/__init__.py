@@ -8,8 +8,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal, Optional
 
-from pydantic import AliasChoices, Field, computed_field
+from pydantic import AliasChoices, Field, computed_field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+import sys
+import os
 
 
 class Settings(BaseSettings):
@@ -58,9 +60,28 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = Field(
         default="redis://localhost:6379/0",
-        alias="REDIS_URL",
+        validation_alias=AliasChoices("REDIS_URL", "REDISURL", "redis_url"),
         description="Redis connection URL",
     )
+
+    @model_validator(mode="after")
+    def log_settings(self) -> "Settings":
+        """Log critical settings for debugging."""
+        # Redact Redis URL for logging
+        url = self.redis_url
+        if "@" in url:
+            prefix, rest = url.split("@", 1)
+            if ":" in prefix:
+                base, _ = prefix.rsplit(":", 1)
+                redacted = f"{base}:***@{rest}"
+            else:
+                redacted = f"***@{rest}"
+        else:
+            redacted = url
+        
+        print(f"DEBUG: Settings initialized. redis_url={redacted}", file=sys.stderr, flush=True)
+        print(f"DEBUG: REDIS_URL env={os.environ.get('REDIS_URL') is not None}", file=sys.stderr, flush=True)
+        return self
     
     @computed_field
     @property

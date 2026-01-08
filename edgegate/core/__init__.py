@@ -57,52 +57,40 @@ class Settings(BaseSettings):
         description="Sync database URL for migrations",
     )
 
-    # Redis
+    # Redis / Celery
     redis_url: str = Field(
         default="redis://localhost:6379/0",
         validation_alias=AliasChoices("REDIS_URL", "REDISURL", "redis_url"),
         description="Redis connection URL",
     )
+    
+    # Celery - read directly from environment, fallback to redis_url
+    celery_broker_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("CELERY_BROKER_URL", "celery_broker_url"),
+        description="Celery broker URL, defaults to redis_url if not set",
+    )
+    celery_result_backend: str = Field(
+        default="",
+        validation_alias=AliasChoices("CELERY_RESULT_BACKEND", "celery_result_backend"),
+        description="Celery result backend URL, defaults to redis_url if not set",
+    )
 
     @model_validator(mode="after")
-    def log_settings(self) -> "Settings":
-        """Log critical settings for debugging."""
-        # Redact Redis URL for logging but show host
-        url = self.redis_url
-        raw_redis_url = os.environ.get('REDIS_URL', '')
+    def log_settings_and_set_defaults(self) -> "Settings":
+        """Log critical settings for debugging and set defaults."""
+        # Set celery defaults if not provided
+        if not self.celery_broker_url:
+            object.__setattr__(self, 'celery_broker_url', self.redis_url)
+        if not self.celery_result_backend:
+            backend = self.redis_url[:-1] + "1" if self.redis_url.endswith("/0") else self.redis_url
+            object.__setattr__(self, 'celery_result_backend', backend)
         
-        # Parse URL to show host without password
-        if "@" in url:
-            prefix, rest = url.split("@", 1)
-            # rest should be host:port/db
-            if ":" in prefix:
-                base, _ = prefix.rsplit(":", 1)
-                redacted = f"{base}:***@{rest}"
-            else:
-                redacted = f"***@{rest}"
-        else:
-            redacted = url
-        
-        print(f"DEBUG: Settings redis_url={redacted}", file=sys.stderr, flush=True)
-        print(f"DEBUG: REDIS_URL env len={len(raw_redis_url)}, has_host={'@' in raw_redis_url and len(raw_redis_url.split('@')[-1]) > 1}", file=sys.stderr, flush=True)
-        
-        # Also log the actual broker URL being used
-        print(f"DEBUG: celery_broker_url will be: {self.celery_broker_url[:20]}..." if len(self.celery_broker_url) > 20 else f"DEBUG: celery_broker_url will be: {self.celery_broker_url}", file=sys.stderr, flush=True)
+        # Debug logging
+        broker_redacted = self.celery_broker_url[:30] + "..." if len(self.celery_broker_url) > 30 else self.celery_broker_url
+        print(f"DEBUG: celery_broker_url={broker_redacted}", file=sys.stderr, flush=True)
+        print(f"DEBUG: CELERY_BROKER_URL env set={os.environ.get('CELERY_BROKER_URL') is not None}", file=sys.stderr, flush=True)
         return self
-    
-    @computed_field
-    @property
-    def celery_broker_url(self) -> str:
-        """Celery broker URL, defaults to redis_url."""
-        return self.redis_url
-
-    @computed_field
-    @property
-    def celery_result_backend(self) -> str:
-        """Celery result backend, defaults to redis_url with db 1 if possible."""
-        if self.redis_url.endswith("/0"):
-            return self.redis_url[:-1] + "1"
-        return self.redis_url
 
     # S3/MinIO
     s3_endpoint_url: str = "http://localhost:9000"

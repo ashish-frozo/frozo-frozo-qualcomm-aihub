@@ -213,13 +213,108 @@ export default function RunDetailPage() {
                                 );
                                 if (res.ok) {
                                     const bundle = await res.json();
-                                    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
-                                    const url = URL.createObjectURL(blob);
-                                    const a = document.createElement("a");
-                                    a.href = url;
-                                    a.download = `evidence_bundle_${runId.slice(0, 8)}.json`;
-                                    a.click();
-                                    URL.revokeObjectURL(url);
+
+                                    // Generate PDF
+                                    const { jsPDF } = await import("jspdf");
+                                    const doc = new jsPDF();
+
+                                    // Header
+                                    doc.setFillColor(15, 23, 42); // slate-900
+                                    doc.rect(0, 0, 210, 40, "F");
+                                    doc.setTextColor(255, 255, 255);
+                                    doc.setFontSize(24);
+                                    doc.text("EdgeGate", 20, 25);
+                                    doc.setFontSize(12);
+                                    doc.text("Evidence Bundle Report", 20, 33);
+
+                                    // Run Info
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.setFontSize(14);
+                                    doc.text(`Pipeline: ${bundle.pipeline_name || "N/A"}`, 20, 55);
+                                    doc.setFontSize(10);
+                                    doc.text(`Run ID: ${bundle.run_id}`, 20, 62);
+                                    doc.text(`Status: ${bundle.status?.toUpperCase()}`, 20, 69);
+                                    doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 76);
+
+                                    // Status Badge
+                                    const statusColor = bundle.status === "passed" ? [34, 197, 94] : [239, 68, 68];
+                                    doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
+                                    doc.roundedRect(150, 50, 40, 12, 2, 2, "F");
+                                    doc.setTextColor(255, 255, 255);
+                                    doc.setFontSize(10);
+                                    doc.text(bundle.status?.toUpperCase() || "N/A", 160, 58);
+
+                                    // Performance Metrics Section
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.setFontSize(16);
+                                    doc.text("Performance Metrics", 20, 95);
+                                    doc.setDrawColor(200, 200, 200);
+                                    doc.line(20, 98, 190, 98);
+
+                                    let yPos = 108;
+                                    if (bundle.normalized_metrics) {
+                                        doc.setFontSize(11);
+                                        Object.entries(bundle.normalized_metrics).forEach(([key, value]) => {
+                                            doc.setFillColor(241, 245, 249); // slate-100
+                                            doc.rect(20, yPos - 5, 170, 12, "F");
+                                            doc.setTextColor(0, 0, 0);
+                                            doc.text(key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()), 25, yPos + 3);
+                                            doc.text(String((value as number).toFixed(2)), 160, yPos + 3);
+                                            yPos += 15;
+                                        });
+                                    } else {
+                                        doc.setFontSize(10);
+                                        doc.setTextColor(100, 100, 100);
+                                        doc.text("No metrics available", 25, yPos);
+                                        yPos += 15;
+                                    }
+
+                                    // Quality Gates Section
+                                    yPos += 10;
+                                    doc.setTextColor(0, 0, 0);
+                                    doc.setFontSize(16);
+                                    doc.text("Quality Gates", 20, yPos);
+                                    doc.line(20, yPos + 3, 190, yPos + 3);
+                                    yPos += 15;
+
+                                    if (bundle.gates_eval?.gates) {
+                                        doc.setFontSize(10);
+                                        bundle.gates_eval.gates.forEach((gate: { metric: string; operator: string; threshold: number; actual_value: number; passed: boolean }) => {
+                                            const gateColor = gate.passed ? [220, 252, 231] : [254, 226, 226]; // green-100 or red-100
+                                            doc.setFillColor(gateColor[0], gateColor[1], gateColor[2]);
+                                            doc.rect(20, yPos - 5, 170, 14, "F");
+
+                                            // Gate icon
+                                            const iconColor = gate.passed ? [34, 197, 94] : [239, 68, 68];
+                                            doc.setTextColor(iconColor[0], iconColor[1], iconColor[2]);
+                                            doc.text(gate.passed ? "✓" : "✗", 25, yPos + 4);
+
+                                            // Gate info
+                                            doc.setTextColor(0, 0, 0);
+                                            doc.text(gate.metric.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()), 35, yPos + 4);
+                                            doc.setTextColor(100, 100, 100);
+                                            doc.text(`${gate.operator} ${gate.threshold}`, 100, yPos + 4);
+                                            doc.setTextColor(iconColor[0], iconColor[1], iconColor[2]);
+                                            doc.text(gate.actual_value?.toFixed(2) || "N/A", 160, yPos + 4);
+
+                                            yPos += 18;
+                                        });
+                                    } else {
+                                        doc.setFontSize(10);
+                                        doc.setTextColor(100, 100, 100);
+                                        doc.text("No gate evaluations available", 25, yPos);
+                                    }
+
+                                    // Footer
+                                    doc.setFillColor(15, 23, 42);
+                                    doc.rect(0, 280, 210, 17, "F");
+                                    doc.setTextColor(150, 150, 150);
+                                    doc.setFontSize(8);
+                                    doc.text("EdgeGate - Edge GenAI Regression Gates for Snapdragon", 20, 290);
+                                    doc.text(`Bundle ID: ${bundle.bundle_artifact_id}`, 130, 290);
+
+                                    // Save PDF
+                                    doc.save(`evidence_report_${runId.slice(0, 8)}.pdf`);
                                 } else {
                                     alert("Failed to download evidence bundle");
                                 }
@@ -231,7 +326,7 @@ export default function RunDetailPage() {
                             }
                         }}
                     >
-                        {downloading ? "Downloading..." : run.bundle_artifact_id ? "Download Evidence Bundle" : "Evidence Bundle Not Available"}
+                        {downloading ? "Generating Report..." : run.bundle_artifact_id ? "Download Evidence Report (PDF)" : "Evidence Report Not Available"}
                     </Button>
                 </div>
             </main>

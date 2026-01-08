@@ -30,6 +30,9 @@ from edgegate.core.security import LocalKeyManagementService, envelope_decrypt
 from edgegate.services.evidence import EvidenceBundleBuilder
 from edgegate.aihub.client import QAIHubClient, ProfileResult, JobStatus
 import asyncio
+import os
+import tempfile
+import boto3
 
 
 # Initialize Celery with lazy configuration
@@ -166,6 +169,7 @@ def get_run_with_pipeline(run_id: str) -> Optional[Dict[str, Any]]:
                 },
                 "model_artifact_path": model_artifact.storage_url if model_artifact else None,
                 "model_artifact_kind": model_artifact.kind.value if model_artifact else None,
+                "model_artifact_filename": model_artifact.original_filename if model_artifact else None,
             }
     except Exception as e:
         logger.error(f"Failed to get run {run_id} with pipeline: {e}")
@@ -189,6 +193,47 @@ def run_async(coro):
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop.run_until_complete(coro)
+
+
+def download_artifact(storage_url: str, filename: str) -> str:
+    """Download artifact from S3 to a temporary file with the correct extension."""
+    settings = get_settings()
+    
+    # Parse s3://bucket/key
+    if not storage_url.startswith("s3://"):
+        return storage_url
+        
+    parts = storage_url.replace("s3://", "").split("/", 1)
+    if len(parts) < 2:
+        raise ValueError(f"Invalid S3 URL: {storage_url}")
+        
+    bucket = parts[0]
+    key = parts[1]
+    
+    # Get extension from filename
+    ext = os.path.splitext(filename)[1]
+    
+    # Create temp file
+    fd, path = tempfile.mkstemp(suffix=ext)
+    os.close(fd)
+    
+    try:
+        s3 = boto3.client(
+            "s3",
+            endpoint_url=settings.s3_endpoint_url,
+            aws_access_key_id=settings.s3_access_key_id,
+            aws_secret_access_key=settings.s3_secret_access_key,
+            region_name=settings.s3_region,
+        )
+        
+        logger.info(f"Downloading artifact from {storage_url} to {path}")
+        s3.download_file(bucket, key, path)
+        return path
+    except Exception as e:
+        if os.path.exists(path):
+            os.remove(path)
+        logger.error(f"Failed to download artifact from S3: {e}")
+        raise
 
 
 # ============================================================================
@@ -349,14 +394,21 @@ def submit_run(
     target_device = device_matrix[0] if isinstance(device_matrix[0], str) else device_matrix[0].get("name", "Samsung Galaxy S24 (Family)")
     
     # Submit compile job
+    local_model_path = None
     try:
+        model_to_submit = model_path
+        if model_path.startswith("s3://"):
+            model_filename = run_data.get("model_artifact_filename") or "model.pt"
+            local_model_path = download_artifact(model_path, model_filename)
+            model_to_submit = local_model_path
+
         logger.info(f"Submitting compile job for run {run_id} on device {target_device}")
         
         # Determine input specs from pipeline config or use defaults
         input_specs = pipeline_config.get("input_specs", {"image": (1, 3, 224, 224)})
         
         compile_job_id = run_async(client.submit_compile_job(
-            model_path=model_path,
+            model_path=model_to_submit,
             device_name=target_device,
             input_specs=input_specs,
         ))
@@ -398,6 +450,13 @@ def submit_run(
         logger.error(f"Failed to submit AI Hub jobs for run {run_id}: {e}")
         update_run_sync(run_id, status=RunStatus.ERROR, error_code="SUBMIT_FAILED", error_detail=str(e))
         raise
+    finally:
+        if local_model_path and os.path.exists(local_model_path):
+            try:
+                os.remove(local_model_path)
+                logger.info(f"Cleaned up temporary model file: {local_model_path}")
+            except Exception as e:
+                logger.warning(f"Failed to remove temporary model file {local_model_path}: {e}")
 
 
 @celery_app.task(bind=True, name="edgegate.tasks.poll_run")

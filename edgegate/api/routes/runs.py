@@ -61,7 +61,7 @@ class RunDetailResponse(BaseModel):
     pipeline_name: str
     status: str
     trigger: str
-    model_artifact_id: UUID
+    model_artifact_id: Optional[UUID]
     normalized_metrics: Optional[Dict[str, Any]]
     gates_eval: Optional[Dict[str, Any]]
     bundle_artifact_id: Optional[UUID]

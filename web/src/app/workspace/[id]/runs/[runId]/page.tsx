@@ -11,6 +11,7 @@ interface Run {
     status: string;
     created_at: string;
     pipeline_name: string;
+    bundle_artifact_id: string | null;
     normalized_metrics: Record<string, number> | null;
     gates_eval: {
         passed: boolean;
@@ -30,6 +31,7 @@ export default function RunDetailPage() {
     const runId = params.runId as string;
     const [run, setRun] = useState<Run | null>(null);
     const [loading, setLoading] = useState(true);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         fetchRun();
@@ -199,9 +201,37 @@ export default function RunDetailPage() {
                     <Button
                         variant="outline"
                         className="border-slate-700 text-white hover:bg-slate-800"
-                        disabled
+                        disabled={!run.bundle_artifact_id || downloading}
+                        onClick={async () => {
+                            if (!run.bundle_artifact_id) return;
+                            setDownloading(true);
+                            try {
+                                const token = localStorage.getItem("token");
+                                const res = await fetch(
+                                    `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/v1/workspaces/${workspaceId}/runs/${runId}/bundle`,
+                                    { headers: { Authorization: `Bearer ${token}` } }
+                                );
+                                if (res.ok) {
+                                    const bundle = await res.json();
+                                    const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: "application/json" });
+                                    const url = URL.createObjectURL(blob);
+                                    const a = document.createElement("a");
+                                    a.href = url;
+                                    a.download = `evidence_bundle_${runId.slice(0, 8)}.json`;
+                                    a.click();
+                                    URL.revokeObjectURL(url);
+                                } else {
+                                    alert("Failed to download evidence bundle");
+                                }
+                            } catch (err) {
+                                console.error("Failed to download bundle", err);
+                                alert("Failed to download evidence bundle");
+                            } finally {
+                                setDownloading(false);
+                            }
+                        }}
                     >
-                        Download Evidence Bundle (Coming Soon)
+                        {downloading ? "Downloading..." : run.bundle_artifact_id ? "Download Evidence Bundle" : "Evidence Bundle Not Available"}
                     </Button>
                 </div>
             </main>

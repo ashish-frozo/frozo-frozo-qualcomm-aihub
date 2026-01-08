@@ -158,8 +158,13 @@ def get_run_with_pipeline(run_id: str) -> Optional[Dict[str, Any]]:
                 "run_id": str(run.id),
                 "workspace_id": str(run.workspace_id),
                 "pipeline_id": str(run.pipeline_id),
-                "pipeline_config": pipeline.config_json if pipeline else {},
-                "model_artifact_path": model_artifact.storage_path if model_artifact else None,
+                "pipeline_config": {
+                    "device_matrix": pipeline.device_matrix_json if pipeline else [],
+                    "promptpack_ref": pipeline.promptpack_ref_json if pipeline else {},
+                    "gates": pipeline.gates_json if pipeline else [],
+                    "run_policy": pipeline.run_policy_json if pipeline else {},
+                },
+                "model_artifact_path": model_artifact.storage_url if model_artifact else None,
                 "model_artifact_kind": model_artifact.kind.value if model_artifact else None,
             }
     except Exception as e:

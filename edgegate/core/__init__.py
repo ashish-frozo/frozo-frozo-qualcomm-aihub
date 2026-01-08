@@ -86,6 +86,12 @@ class Settings(BaseSettings):
             backend = self.redis_url[:-1] + "1" if self.redis_url.endswith("/0") else self.redis_url
             object.__setattr__(self, 'celery_result_backend', backend)
         
+        # Set S3 default for local dev if not provided
+        if self.app_env == "development" and not self.s3_endpoint_url:
+            object.__setattr__(self, 's3_endpoint_url', "http://localhost:9000")
+        elif self.s3_endpoint_url == "":
+            object.__setattr__(self, 's3_endpoint_url', None)
+        
         # Debug logging
         broker_redacted = self.celery_broker_url[:30] + "..." if len(self.celery_broker_url) > 30 else self.celery_broker_url
         print(f"DEBUG: celery_broker_url={broker_redacted}", file=sys.stderr, flush=True)
@@ -93,7 +99,10 @@ class Settings(BaseSettings):
         return self
 
     # S3/MinIO
-    s3_endpoint_url: str = "http://localhost:9000"
+    s3_endpoint_url: Optional[str] = Field(
+        default=None,
+        description="S3 endpoint URL (e.g. for MinIO). Leave empty for real S3.",
+    )
     s3_access_key_id: str = "minioadmin"
     s3_secret_access_key: str = "minioadmin"
     s3_bucket_name: str = "edgegate-artifacts"

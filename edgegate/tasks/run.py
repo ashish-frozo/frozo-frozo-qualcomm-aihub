@@ -196,8 +196,17 @@ def run_async(coro):
 
 
 def download_artifact(storage_url: str, filename: str) -> str:
-    """Download artifact from S3 to a temporary file with the correct extension."""
+    """Download artifact to a temporary file with the correct extension."""
     settings = get_settings()
+    
+    # Handle local file URLs
+    if storage_url.startswith("file://"):
+        local_path = storage_url.replace("file://", "")
+        if os.path.exists(local_path):
+            return local_path
+        # If file doesn't exist at the absolute path, try relative to current dir
+        # (though storage_url should be absolute)
+        return local_path
     
     # Parse s3://bucket/key
     if not storage_url.startswith("s3://"):
@@ -220,7 +229,7 @@ def download_artifact(storage_url: str, filename: str) -> str:
     try:
         s3 = boto3.client(
             "s3",
-            endpoint_url=settings.s3_endpoint_url,
+            endpoint_url=settings.s3_endpoint_url or None,
             aws_access_key_id=settings.s3_access_key_id,
             aws_secret_access_key=settings.s3_secret_access_key,
             region_name=settings.s3_region,

@@ -54,8 +54,8 @@ dependencies = [
     # JSONPath for metric extraction
     "jsonpath-ng>=1.6.0",
     
-    # AI Hub SDK (optional, for real integration)
-    # "qai_hub",
+    # AI Hub SDK for Qualcomm AI Hub integration
+    "qai_hub>=0.15.0",
     
     # PyTorch for probe model generation
     "torch>=2.1.0",

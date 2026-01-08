@@ -26,8 +26,11 @@ from celery.utils.log import get_task_logger
 
 from edgegate.core import get_settings
 from edgegate.db import Run, RunStatus, Artifact, ArtifactKind, Pipeline, PromptPack
+from edgegate.db.models import Workspace, IntegrationCredential
 from edgegate.core.security import LocalKeyManagementService
 from edgegate.services.evidence import EvidenceBundleBuilder
+from edgegate.aihub.client import QAIHubClient, ProfileResult, JobStatus
+import asyncio
 
 
 # Initialize Celery with lazy configuration
@@ -101,6 +104,86 @@ def update_run_sync(
         logger.error(f"Failed to update run {run_id} in DB: {e}")
 
 
+def get_aihub_token_for_workspace(workspace_id: str) -> Optional[str]:
+    """Get the AI Hub API token for a workspace from encrypted credentials.
+    
+    Falls back to the global QAIHUB_API_TOKEN setting if no workspace credential is found.
+    """
+    try:
+        with SyncSession() as session:
+            # First try to get workspace-specific credential
+            stmt = select(IntegrationCredential).where(
+                IntegrationCredential.workspace_id == UUID(workspace_id),
+                IntegrationCredential.provider == "qaihub",
+            )
+            cred = session.execute(stmt).scalar_one_or_none()
+            
+            if cred and cred.encrypted_data:
+                # Decrypt the token
+                kms = LocalKeyManagementService()
+                decrypted = kms.decrypt_field(cred.encrypted_data)
+                cred_data = json.loads(decrypted)
+                return cred_data.get("api_token")
+            
+            # Fall back to global setting
+            return settings.qaihub_api_token
+    except Exception as e:
+        logger.warning(f"Failed to get AI Hub token for workspace {workspace_id}: {e}")
+        return settings.qaihub_api_token
+
+
+def get_run_with_pipeline(run_id: str) -> Optional[Dict[str, Any]]:
+    """Get run details with pipeline configuration from database."""
+    try:
+        with SyncSession() as session:
+            stmt = select(Run).where(Run.id == UUID(run_id))
+            run = session.execute(stmt).scalar_one_or_none()
+            
+            if not run:
+                return None
+            
+            # Get pipeline
+            pipeline_stmt = select(Pipeline).where(Pipeline.id == run.pipeline_id)
+            pipeline = session.execute(pipeline_stmt).scalar_one_or_none()
+            
+            # Get model artifact if exists
+            model_artifact = None
+            if run.model_artifact_id:
+                artifact_stmt = select(Artifact).where(Artifact.id == run.model_artifact_id)
+                model_artifact = session.execute(artifact_stmt).scalar_one_or_none()
+            
+            return {
+                "run_id": str(run.id),
+                "workspace_id": str(run.workspace_id),
+                "pipeline_id": str(run.pipeline_id),
+                "pipeline_config": pipeline.config_json if pipeline else {},
+                "model_artifact_path": model_artifact.storage_path if model_artifact else None,
+                "model_artifact_kind": model_artifact.kind.value if model_artifact else None,
+            }
+    except Exception as e:
+        logger.error(f"Failed to get run {run_id} with pipeline: {e}")
+        return None
+
+
+def create_aihub_client(workspace_id: str) -> Optional[QAIHubClient]:
+    """Create a QAIHubClient for the given workspace."""
+    token = get_aihub_token_for_workspace(workspace_id)
+    if not token:
+        logger.error(f"No AI Hub token found for workspace {workspace_id}")
+        return None
+    return QAIHubClient(api_token=token)
+
+
+def run_async(coro):
+    """Run an async coroutine in a sync context."""
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop.run_until_complete(coro)
+
+
 # ============================================================================
 # Job Spec
 # ============================================================================
@@ -162,6 +245,8 @@ def prepare_run(
     """
     QUEUED → PREPARING: Validate inputs and build job_spec.
     
+    Fetches run and pipeline data from database to prepare for AI Hub submission.
+    
     Args:
         run_id: Run UUID string.
         workspace_id: Workspace UUID string.
@@ -172,23 +257,36 @@ def prepare_run(
     logger.info(f"Preparing run {run_id}")
     update_run_sync(run_id, status=RunStatus.PREPARING)
     
-    # This would normally:
-    # 1. Load run from database
-    # 2. Load pipeline configuration
-    # 3. Load model artifact metadata
-    # 4. Load PromptPack content
-    # 5. Build job_spec
+    # Load run and pipeline from database
+    run_data = get_run_with_pipeline(run_id)
     
-    # For now, return a mock job_spec
-    # In production, this would use async SQLAlchemy within sync context
+    if not run_data:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="RUN_NOT_FOUND")
+        raise ValueError(f"Run {run_id} not found in database")
+    
+    pipeline_config = run_data.get("pipeline_config", {})
+    model_path = run_data.get("model_artifact_path")
+    
+    # Validate required data
+    if not model_path:
+        logger.warning(f"No model artifact for run {run_id} - will fail at submit step")
+    
+    # Build job_spec from real data
+    job_spec = build_job_spec(
+        run_id=run_id,
+        workspace_id=workspace_id,
+        pipeline_config=pipeline_config,
+        model_artifact_url=model_path or "",
+        promptpack_content={},  # TODO: Load promptpack if needed
+    )
+    
+    logger.info(f"Prepared run {run_id} with pipeline config")
+    
     return {
         "run_id": run_id,
         "workspace_id": workspace_id,
         "status": "prepared",
-        "job_spec": {
-            "version": "1.0",
-            "run_id": run_id,
-        },
+        "job_spec": job_spec,
     }
 
 
@@ -200,6 +298,8 @@ def submit_run(
     """
     PREPARING → SUBMITTING: Submit jobs to AI Hub.
     
+    Uses the real QAIHubClient to submit compile and profile jobs.
+    
     Args:
         prepare_result: Result from prepare_run task.
         
@@ -207,24 +307,90 @@ def submit_run(
         Submission result with job IDs.
     """
     run_id = prepare_result["run_id"]
+    workspace_id = prepare_result["workspace_id"]
+    job_spec = prepare_result.get("job_spec", {})
+    
     logger.info(f"Submitting run {run_id}")
     update_run_sync(run_id, status=RunStatus.SUBMITTING)
     
-    # This would normally:
-    # 1. Get AI Hub token for workspace
-    # 2. Submit compile job
-    # 3. Wait for compile job
-    # 4. Submit profile job
-    # 5. Return job IDs
+    # Get run details from database
+    run_data = get_run_with_pipeline(run_id)
+    if not run_data:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="RUN_NOT_FOUND")
+        raise ValueError(f"Run {run_id} not found in database")
     
-    return {
-        "run_id": run_id,
-        "status": "submitted",
-        "job_ids": {
-            "compile": f"mock-compile-{run_id[:8]}",
-            "profile": f"mock-profile-{run_id[:8]}",
-        },
-    }
+    # Create AI Hub client
+    client = create_aihub_client(workspace_id)
+    if not client:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="NO_AIHUB_TOKEN")
+        raise ValueError(f"No AI Hub token configured for workspace {workspace_id}")
+    
+    # Get model path and device targets from pipeline config
+    pipeline_config = run_data.get("pipeline_config", {})
+    model_path = run_data.get("model_artifact_path")
+    device_matrix = pipeline_config.get("device_matrix", [])
+    
+    if not model_path:
+        # If no model artifact, we can't run profiling
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="NO_MODEL_ARTIFACT")
+        raise ValueError(f"No model artifact found for run {run_id}")
+    
+    if not device_matrix:
+        device_matrix = ["Samsung Galaxy S24 (Family)"]  # Default device
+    
+    # Get the first device for now (future: support multiple devices)
+    target_device = device_matrix[0] if isinstance(device_matrix[0], str) else device_matrix[0].get("name", "Samsung Galaxy S24 (Family)")
+    
+    # Submit compile job
+    try:
+        logger.info(f"Submitting compile job for run {run_id} on device {target_device}")
+        
+        # Determine input specs from pipeline config or use defaults
+        input_specs = pipeline_config.get("input_specs", {"image": (1, 3, 224, 224)})
+        
+        compile_job_id = run_async(client.submit_compile_job(
+            model_path=model_path,
+            device_name=target_device,
+            input_specs=input_specs,
+        ))
+        logger.info(f"Compile job submitted: {compile_job_id}")
+        
+        # Wait for compile job to complete
+        logger.info(f"Waiting for compile job {compile_job_id} to complete...")
+        compile_result = run_async(client.wait_for_job(compile_job_id, timeout_seconds=1800))
+        
+        if compile_result.status != JobStatus.COMPLETED:
+            update_run_sync(run_id, status=RunStatus.ERROR, error_code="COMPILE_FAILED", 
+                          error_detail=compile_result.error_message)
+            raise ValueError(f"Compile job failed: {compile_result.error_message}")
+        
+        # Get the compiled model URL
+        compiled_model_url = compile_result.result_url or f"https://aihub.qualcomm.com/jobs/{compile_job_id}/model"
+        
+        # Submit profile job
+        logger.info(f"Submitting profile job for run {run_id}")
+        profile_job_id = run_async(client.submit_profile_job(
+            model_url=compiled_model_url,
+            device_name=target_device,
+        ))
+        logger.info(f"Profile job submitted: {profile_job_id}")
+        
+        return {
+            "run_id": run_id,
+            "workspace_id": workspace_id,
+            "status": "submitted",
+            "job_ids": {
+                "compile": compile_job_id,
+                "profile": profile_job_id,
+            },
+            "device": target_device,
+            "compiled_model_url": compiled_model_url,
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to submit AI Hub jobs for run {run_id}: {e}")
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="SUBMIT_FAILED", error_detail=str(e))
+        raise
 
 
 @celery_app.task(bind=True, name="edgegate.tasks.poll_run")
@@ -233,7 +399,9 @@ def poll_run(
     submit_result: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    SUBMITTING → RUNNING: Poll AI Hub for completion.
+    SUBMITTING → RUNNING: Poll AI Hub for profile job completion.
+    
+    Uses the real QAIHubClient to wait for the profile job to complete.
     
     Args:
         submit_result: Result from submit_run task.
@@ -242,19 +410,53 @@ def poll_run(
         Poll result with completion status.
     """
     run_id = submit_result["run_id"]
-    logger.info(f"Polling run {run_id}")
+    workspace_id = submit_result.get("workspace_id")
+    job_ids = submit_result.get("job_ids", {})
+    profile_job_id = job_ids.get("profile")
+    
+    logger.info(f"Polling run {run_id} for profile job {profile_job_id}")
     update_run_sync(run_id, status=RunStatus.RUNNING)
     
-    # This would normally:
-    # 1. Poll AI Hub for job status
-    # 2. Wait for completion
-    # 3. Handle timeouts
+    if not workspace_id:
+        # Get workspace_id from database
+        run_data = get_run_with_pipeline(run_id)
+        workspace_id = run_data.get("workspace_id") if run_data else None
     
-    return {
-        "run_id": run_id,
-        "status": "completed",
-        "job_ids": submit_result["job_ids"],
-    }
+    if not workspace_id:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="NO_WORKSPACE")
+        raise ValueError(f"No workspace found for run {run_id}")
+    
+    # Create AI Hub client
+    client = create_aihub_client(workspace_id)
+    if not client:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="NO_AIHUB_TOKEN")
+        raise ValueError(f"No AI Hub token configured for workspace {workspace_id}")
+    
+    try:
+        # Wait for profile job to complete
+        logger.info(f"Waiting for profile job {profile_job_id} to complete...")
+        profile_result = run_async(client.wait_for_job(profile_job_id, timeout_seconds=1800))
+        
+        if profile_result.status == JobStatus.FAILED:
+            update_run_sync(run_id, status=RunStatus.ERROR, error_code="PROFILE_FAILED",
+                          error_detail=profile_result.error_message)
+            raise ValueError(f"Profile job failed: {profile_result.error_message}")
+        
+        logger.info(f"Profile job {profile_job_id} completed with status {profile_result.status}")
+        
+        return {
+            "run_id": run_id,
+            "workspace_id": workspace_id,
+            "status": "completed",
+            "job_ids": job_ids,
+            "device": submit_result.get("device"),
+            "compiled_model_url": submit_result.get("compiled_model_url"),
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to poll AI Hub for run {run_id}: {e}")
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="POLL_FAILED", error_detail=str(e))
+        raise
 
 
 @celery_app.task(bind=True, name="edgegate.tasks.collect_results")
@@ -265,6 +467,8 @@ def collect_results(
     """
     RUNNING → COLLECTING: Download results from AI Hub.
     
+    Uses the real QAIHubClient to download profile metrics.
+    
     Args:
         poll_result: Result from poll_run task.
         
@@ -272,31 +476,65 @@ def collect_results(
         Raw results from AI Hub.
     """
     run_id = poll_result["run_id"]
+    workspace_id = poll_result.get("workspace_id")
+    job_ids = poll_result.get("job_ids", {})
+    profile_job_id = job_ids.get("profile")
+    device = poll_result.get("device", "Unknown Device")
+    
     logger.info(f"Collecting results for run {run_id}")
     update_run_sync(run_id, status=RunStatus.COLLECTING)
     
-    # This would normally:
-    # 1. Download profile results
-    # 2. Download inference outputs (if applicable)
-    # 3. Store raw results
+    # Create AI Hub client
+    client = create_aihub_client(workspace_id)
+    if not client:
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="NO_AIHUB_TOKEN")
+        raise ValueError(f"No AI Hub token configured for workspace {workspace_id}")
     
-    # Mock results
-    return {
-        "run_id": run_id,
-        "status": "collected",
-        "raw_results": {
-            "devices": {
-                "Samsung Galaxy S24": {
-                    "measurements": [
-                        {"inference_time_ms": 15.2, "peak_memory_mb": 42.1},
-                        {"inference_time_ms": 12.8, "peak_memory_mb": 41.9},
-                        {"inference_time_ms": 13.1, "peak_memory_mb": 42.0},
-                        {"inference_time_ms": 12.5, "peak_memory_mb": 41.8},
-                    ],
+    try:
+        # Download profile results
+        logger.info(f"Downloading profile results for job {profile_job_id}")
+        profile_result = run_async(client.get_profile_results(profile_job_id))
+        
+        if profile_result.status == JobStatus.FAILED:
+            update_run_sync(run_id, status=RunStatus.ERROR, error_code="COLLECT_FAILED",
+                          error_detail=profile_result.error_message)
+            raise ValueError(f"Failed to collect profile results: {profile_result.error_message}")
+        
+        # Extract metrics from profile results
+        raw_metrics = profile_result.metrics or {}
+        raw_profile = profile_result.raw_profile or {}
+        
+        # Normalize metrics to expected format
+        measurements = [{
+            "inference_time_ms": raw_metrics.get("inference_time_ms", 0.0),
+            "peak_memory_mb": raw_metrics.get("peak_memory_mb", 0.0),
+        }]
+        
+        # Include compute unit breakdown if available
+        compute_units = raw_metrics.get("compute_units", {})
+        if compute_units:
+            measurements[0]["compute_units"] = compute_units
+        
+        logger.info(f"Collected metrics for run {run_id}: {raw_metrics}")
+        
+        return {
+            "run_id": run_id,
+            "workspace_id": workspace_id,
+            "status": "collected",
+            "raw_results": {
+                "devices": {
+                    device: {
+                        "measurements": measurements,
+                        "raw_profile": raw_profile,
+                    },
                 },
             },
-        },
-    }
+        }
+        
+    except Exception as e:
+        logger.error(f"Failed to collect results for run {run_id}: {e}")
+        update_run_sync(run_id, status=RunStatus.ERROR, error_code="COLLECT_FAILED", error_detail=str(e))
+        raise
 
 
 @celery_app.task(bind=True, name="edgegate.tasks.evaluate_run")

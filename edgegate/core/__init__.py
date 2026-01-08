@@ -67,10 +67,14 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def log_settings(self) -> "Settings":
         """Log critical settings for debugging."""
-        # Redact Redis URL for logging
+        # Redact Redis URL for logging but show host
         url = self.redis_url
+        raw_redis_url = os.environ.get('REDIS_URL', '')
+        
+        # Parse URL to show host without password
         if "@" in url:
             prefix, rest = url.split("@", 1)
+            # rest should be host:port/db
             if ":" in prefix:
                 base, _ = prefix.rsplit(":", 1)
                 redacted = f"{base}:***@{rest}"
@@ -79,8 +83,11 @@ class Settings(BaseSettings):
         else:
             redacted = url
         
-        print(f"DEBUG: Settings initialized. redis_url={redacted}", file=sys.stderr, flush=True)
-        print(f"DEBUG: REDIS_URL env={os.environ.get('REDIS_URL') is not None}", file=sys.stderr, flush=True)
+        print(f"DEBUG: Settings redis_url={redacted}", file=sys.stderr, flush=True)
+        print(f"DEBUG: REDIS_URL env len={len(raw_redis_url)}, has_host={'@' in raw_redis_url and len(raw_redis_url.split('@')[-1]) > 1}", file=sys.stderr, flush=True)
+        
+        # Also log the actual broker URL being used
+        print(f"DEBUG: celery_broker_url will be: {self.celery_broker_url[:20]}..." if len(self.celery_broker_url) > 20 else f"DEBUG: celery_broker_url will be: {self.celery_broker_url}", file=sys.stderr, flush=True)
         return self
     
     @computed_field

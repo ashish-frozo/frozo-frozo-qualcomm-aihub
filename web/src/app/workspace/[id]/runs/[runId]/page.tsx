@@ -3,10 +3,6 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { StatusBadge, getStatusFromRunStatus } from "@/components/ui/StatusBadge";
-import { QualityGate } from "@/components/ui/QualityGate";
-import { StatCard } from "@/components/ui/StatCard";
 
 interface Run {
     id: string;
@@ -16,6 +12,9 @@ interface Run {
     pipeline_name: string;
     bundle_artifact_id: string | null;
     model_artifact_id: string | null;
+    model_artifact?: {
+        original_filename: string;
+    };
     normalized_metrics: Record<string, number> | null;
     device_metrics: Record<string, Record<string, number>> | null;
     gates_eval: {
@@ -26,7 +25,6 @@ interface Run {
             threshold: number;
             actual_value: number | null;
             passed: boolean;
-            description?: string;
         }>;
     } | null;
 }
@@ -41,7 +39,6 @@ export default function RunDetailPage() {
 
     useEffect(() => {
         fetchRun();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId, runId]);
 
     const fetchRun = async () => {
@@ -75,6 +72,11 @@ export default function RunDetailPage() {
         return `${minutes}m ${seconds}s`;
     };
 
+    const formatOperator = (op: string) => {
+        const map: Record<string, string> = { lt: "<", lte: "≤", gt: ">", gte: "≥", eq: "=" };
+        return map[op] || op;
+    };
+
     const downloadReport = async () => {
         if (!run?.bundle_artifact_id) return;
         setDownloading(true);
@@ -88,95 +90,23 @@ export default function RunDetailPage() {
                 const bundle = await res.json();
                 const { jsPDF } = await import("jspdf");
                 const doc = new jsPDF();
-
-                // Header
-                doc.setFillColor(13, 17, 23);
+                doc.setFillColor(16, 25, 34);
                 doc.rect(0, 0, 210, 40, "F");
                 doc.setTextColor(255, 255, 255);
                 doc.setFontSize(24);
                 doc.text("EdgeGate", 20, 25);
                 doc.setFontSize(12);
                 doc.text("Evidence Bundle Report", 20, 33);
-
-                // Run Info
                 doc.setTextColor(0, 0, 0);
                 doc.setFontSize(14);
                 doc.text(`Pipeline: ${bundle.pipeline_name || "N/A"}`, 20, 55);
                 doc.setFontSize(10);
                 doc.text(`Run ID: ${bundle.run_id}`, 20, 62);
                 doc.text(`Status: ${bundle.status?.toUpperCase()}`, 20, 69);
-                doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 76);
-
-                // Status Badge
-                const statusColor = bundle.status === "passed" ? [35, 134, 54] : [218, 54, 51];
-                doc.setFillColor(statusColor[0], statusColor[1], statusColor[2]);
-                doc.roundedRect(150, 50, 40, 12, 2, 2, "F");
-                doc.setTextColor(255, 255, 255);
-                doc.setFontSize(10);
-                doc.text(bundle.status?.toUpperCase() || "N/A", 160, 58);
-
-                // Performance Metrics Section
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(16);
-                doc.text("Performance Metrics", 20, 95);
-                doc.setDrawColor(200, 200, 200);
-                doc.line(20, 98, 190, 98);
-
-                let yPos = 108;
-                if (bundle.normalized_metrics) {
-                    doc.setFontSize(11);
-                    Object.entries(bundle.normalized_metrics).forEach(([key, value]) => {
-                        doc.setFillColor(241, 245, 249);
-                        doc.rect(20, yPos - 5, 170, 12, "F");
-                        doc.setTextColor(0, 0, 0);
-                        doc.text(key.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()), 25, yPos + 3);
-                        doc.text(String((value as number).toFixed(2)), 160, yPos + 3);
-                        yPos += 15;
-                    });
-                }
-
-                // Quality Gates Section
-                yPos += 10;
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(16);
-                doc.text("Quality Gates", 20, yPos);
-                doc.line(20, yPos + 3, 190, yPos + 3);
-                yPos += 15;
-
-                if (bundle.gates_eval?.gates) {
-                    doc.setFontSize(10);
-                    bundle.gates_eval.gates.forEach((gate: { metric: string; operator: string; threshold: number; actual_value: number; passed: boolean }) => {
-                        const gateColor = gate.passed ? [220, 252, 231] : [254, 226, 226];
-                        doc.setFillColor(gateColor[0], gateColor[1], gateColor[2]);
-                        doc.rect(20, yPos - 5, 170, 14, "F");
-                        const iconColor = gate.passed ? [35, 134, 54] : [218, 54, 51];
-                        doc.setTextColor(iconColor[0], iconColor[1], iconColor[2]);
-                        doc.text(gate.passed ? "✓" : "✗", 25, yPos + 4);
-                        doc.setTextColor(0, 0, 0);
-                        doc.text(gate.metric.replace(/_/g, " ").replace(/\b\w/g, l => l.toUpperCase()), 35, yPos + 4);
-                        doc.setTextColor(100, 100, 100);
-                        doc.text(`${gate.operator} ${gate.threshold}`, 100, yPos + 4);
-                        doc.setTextColor(iconColor[0], iconColor[1], iconColor[2]);
-                        doc.text(gate.actual_value?.toFixed(2) || "N/A", 160, yPos + 4);
-                        yPos += 18;
-                    });
-                }
-
-                // Footer
-                doc.setFillColor(13, 17, 23);
-                doc.rect(0, 280, 210, 17, "F");
-                doc.setTextColor(150, 150, 150);
-                doc.setFontSize(8);
-                doc.text("EdgeGate - Edge GenAI Regression Gates for Snapdragon", 20, 290);
-                doc.text(`Bundle ID: ${bundle.bundle_artifact_id}`, 130, 290);
-
                 doc.save(`evidence_report_${runId.slice(0, 8)}.pdf`);
-            } else {
-                alert("Failed to download evidence bundle");
             }
         } catch (err) {
             console.error("Failed to download bundle", err);
-            alert("Failed to download evidence bundle");
         } finally {
             setDownloading(false);
         }
@@ -184,8 +114,8 @@ export default function RunDetailPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="flex items-center gap-2 text-muted-foreground">
+            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#101922" }}>
+                <div className="flex items-center gap-2" style={{ color: "#92adc9" }}>
                     <span className="material-symbols-outlined animate-spin">sync</span>
                     <span>Loading...</span>
                 </div>
@@ -195,187 +125,248 @@ export default function RunDetailPage() {
 
     if (!run) {
         return (
-            <div className="min-h-screen bg-background flex items-center justify-center">
-                <div className="text-destructive">Run not found</div>
+            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#101922" }}>
+                <div style={{ color: "#ef4444" }}>Run not found</div>
             </div>
         );
     }
 
     const gatesPassed = run.gates_eval?.gates.filter(g => g.passed).length || 0;
     const gatesFailed = run.gates_eval?.gates.filter(g => !g.passed).length || 0;
+    const statusColor = run.status === "passed" ? "#10b981" : run.status === "failed" ? "#ef4444" : "#3b82f6";
+    const statusBg = run.status === "passed" ? "rgba(16,185,129,0.1)" : run.status === "failed" ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.1)";
+    const statusBorder = run.status === "passed" ? "rgba(16,185,129,0.2)" : run.status === "failed" ? "rgba(239,68,68,0.2)" : "rgba(59,130,246,0.2)";
 
     return (
-        <div className="min-h-screen bg-background text-foreground font-sans">
-            {/* Top Navigation / Breadcrumbs */}
-            <header className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b border-border px-8 py-4">
-                <div className="flex flex-col gap-4 max-w-7xl mx-auto">
-                    <div className="flex items-center justify-between">
-                        {/* Breadcrumbs */}
-                        <div className="flex items-center gap-2 text-sm">
-                            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
-                                EdgeGate
-                            </Link>
-                            <span className="material-symbols-outlined text-muted-foreground text-xs">chevron_right</span>
-                            <Link href={`/workspace/${workspaceId}`} className="text-muted-foreground hover:text-foreground transition-colors">
-                                Workspace
-                            </Link>
-                            <span className="material-symbols-outlined text-muted-foreground text-xs">chevron_right</span>
-                            <Link href={`/workspace/${workspaceId}/runs`} className="text-muted-foreground hover:text-foreground transition-colors">
-                                Runs
-                            </Link>
-                            <span className="material-symbols-outlined text-muted-foreground text-xs">chevron_right</span>
-                            <span className="text-foreground font-medium font-mono">{run.id.slice(0, 8)}</span>
+        <div className="min-h-screen flex overflow-hidden" style={{ backgroundColor: "#101922", color: "#f1f5f9", fontFamily: "Inter, sans-serif" }}>
+            {/* Sidebar */}
+            <div className="w-64 flex-shrink-0 hidden md:flex flex-col" style={{ borderRight: "1px solid #2a3b4d", backgroundColor: "#101922" }}>
+                <div className="flex flex-col h-full p-4">
+                    <div className="flex items-center gap-2 mb-8 px-2">
+                        <div className="w-8 h-8 rounded flex items-center justify-center" style={{ backgroundColor: "#2b8cee" }}>
+                            <span className="material-symbols-outlined text-white" style={{ fontSize: "20px" }}>hub</span>
                         </div>
-                        {/* Quick Actions */}
-                        <div className="flex gap-3">
-                            <Button
-                                variant="outline"
-                                className="border-border hover:bg-accent text-muted-foreground"
-                                onClick={downloadReport}
-                                disabled={!run.bundle_artifact_id || downloading}
-                            >
-                                <span className="material-symbols-outlined text-lg mr-2">download</span>
-                                {downloading ? "Generating..." : "Download Report"}
-                            </Button>
-                            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20">
-                                <span className="material-symbols-outlined text-lg mr-2">replay</span>
-                                Re-run
-                            </Button>
+                        <div className="flex flex-col">
+                            <h1 className="text-white text-base font-bold leading-none">EdgeGate</h1>
+                            <p style={{ color: "#92adc9", fontSize: "12px" }} className="mt-1">CI/CD Platform</p>
                         </div>
                     </div>
-                    {/* Page Heading & Meta */}
-                    <div className="flex items-end justify-between pb-2">
-                        <div className="flex flex-col gap-2">
-                            <div className="flex items-center gap-4">
-                                <h1 className="text-foreground text-3xl font-black tracking-tight">
-                                    Run #{run.id.slice(0, 8)}
-                                </h1>
-                                <StatusBadge status={getStatusFromRunStatus(run.status)} />
-                            </div>
-                            <p className="text-muted-foreground text-sm flex items-center gap-2">
-                                <span className="material-symbols-outlined text-lg">schedule</span>
-                                Duration: {formatDuration(run.created_at, run.completed_at)} • Started {new Date(run.created_at).toLocaleString()}
-                            </p>
-                        </div>
-                    </div>
+                    <nav className="flex flex-col gap-1">
+                        <Link href={`/workspace/${workspaceId}`} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors" style={{ color: "#92adc9" }}>
+                            <span className="material-symbols-outlined">dashboard</span>
+                            <span className="text-sm font-medium">Dashboard</span>
+                        </Link>
+                        <Link href={`/workspace/${workspaceId}/runs`} className="flex items-center gap-3 px-3 py-2 rounded-lg" style={{ backgroundColor: "rgba(43,140,238,0.1)", color: "#2b8cee" }}>
+                            <span className="material-symbols-outlined">play_circle</span>
+                            <span className="text-sm font-medium">Runs</span>
+                        </Link>
+                        <Link href={`/workspace/${workspaceId}/pipelines`} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors" style={{ color: "#92adc9" }}>
+                            <span className="material-symbols-outlined">account_tree</span>
+                            <span className="text-sm font-medium">Pipelines</span>
+                        </Link>
+                        <Link href={`/workspace/${workspaceId}/artifacts`} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors" style={{ color: "#92adc9" }}>
+                            <span className="material-symbols-outlined">deployed_code</span>
+                            <span className="text-sm font-medium">Artifacts</span>
+                        </Link>
+                        <Link href={`/workspace/${workspaceId}/settings`} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors" style={{ color: "#92adc9" }}>
+                            <span className="material-symbols-outlined">settings</span>
+                            <span className="text-sm font-medium">Settings</span>
+                        </Link>
+                    </nav>
                 </div>
-            </header>
-
-            {/* Content Body */}
-            <div className="p-8 max-w-7xl mx-auto w-full flex flex-col gap-6">
-                {/* Summary Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <StatCard
-                        title="Pipeline"
-                        value={run.pipeline_name || "Default Pipeline"}
-                        icon="alt_route"
-                    />
-                    <StatCard
-                        title="Device"
-                        value={Object.keys(run.device_metrics || {})[0] || "sm8650"}
-                        icon="smartphone"
-                    />
-                    <StatCard
-                        title="Inference Time"
-                        value={`${(run.normalized_metrics?.inference_time_ms || 0).toFixed(3)} ms`}
-                        icon="speed"
-                    />
-                    <StatCard
-                        title="Peak Memory"
-                        value={`${(run.normalized_metrics?.peak_memory_mb || 0).toFixed(1)} MB`}
-                        icon="memory"
-                    />
-                </div>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Quality Gates Section */}
-                    <div className="lg:col-span-1 flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-foreground font-bold text-lg">Quality Gates</h3>
-                            <span className="text-xs text-muted-foreground bg-accent px-2 py-1 rounded">
-                                {gatesPassed} Pass, {gatesFailed} Fail
-                            </span>
-                        </div>
-                        <div className="bg-card rounded-xl border border-border p-5 flex flex-col gap-6">
-                            {run.gates_eval?.gates.map((gate, i) => (
-                                <QualityGate
-                                    key={i}
-                                    metric={gate.metric}
-                                    actualValue={gate.actual_value}
-                                    threshold={gate.threshold}
-                                    operator={gate.operator as "lt" | "lte" | "gt" | "gte" | "eq"}
-                                    passed={gate.passed}
-                                    unit={gate.metric.includes("time") ? "ms" : gate.metric.includes("memory") ? "MB" : ""}
-                                />
-                            )) || (
-                                    <p className="text-muted-foreground text-sm">No gates configured</p>
-                                )}
-                        </div>
-                    </div>
-
-                    {/* Performance Analysis Section */}
-                    <div className="lg:col-span-2 flex flex-col gap-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-foreground font-bold text-lg">Performance Summary</h3>
-                        </div>
-                        <div className="bg-card rounded-xl border border-border p-5">
-                            {run.normalized_metrics && Object.keys(run.normalized_metrics).length > 0 ? (
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                                    {Object.entries(run.normalized_metrics).map(([key, value]) => (
-                                        <div key={key} className="flex flex-col">
-                                            <span className="text-muted-foreground text-xs uppercase tracking-wider mb-1">
-                                                {key.replace(/_/g, " ")}
-                                            </span>
-                                            <span className="text-foreground text-2xl font-bold font-mono">
-                                                {typeof value === "number" ? value.toFixed(3) : value}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-muted-foreground">
-                                    <span className="material-symbols-outlined text-4xl mb-2 block">analytics</span>
-                                    No metrics available yet
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Device-specific Metrics */}
-                {run.device_metrics && Object.keys(run.device_metrics).length > 0 && (
-                    <div className="flex flex-col gap-4">
-                        <h3 className="text-foreground font-bold text-lg">Device Breakdown</h3>
-                        <div className="bg-card rounded-xl border border-border overflow-hidden">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="bg-accent border-b border-border">
-                                        <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Device</th>
-                                        <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Inference Time</th>
-                                        <th className="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-muted-foreground text-right">Peak Memory</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                    {Object.entries(run.device_metrics).map(([device, metrics]) => (
-                                        <tr key={device} className="hover:bg-accent/50 transition-colors">
-                                            <td className="py-3 px-6 text-sm font-medium text-foreground flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-muted-foreground">smartphone</span>
-                                                {device}
-                                            </td>
-                                            <td className="py-3 px-6 text-sm text-emerald-400 font-mono text-right">
-                                                {(metrics.inference_time_ms || 0).toFixed(3)} ms
-                                            </td>
-                                            <td className="py-3 px-6 text-sm text-foreground font-mono text-right">
-                                                {(metrics.peak_memory_mb || 0).toFixed(1)} MB
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Main Content */}
+            <main className="flex-1 flex flex-col h-screen overflow-y-auto relative">
+                {/* Top Navigation / Breadcrumbs */}
+                <header className="sticky top-0 z-10 px-8 py-4" style={{ backgroundColor: "rgba(16,25,34,0.95)", backdropFilter: "blur(4px)", borderBottom: "1px solid #2a3b4d" }}>
+                    <div className="flex flex-col gap-4 max-w-7xl mx-auto">
+                        <div className="flex items-center justify-between">
+                            {/* Breadcrumbs */}
+                            <div className="flex items-center gap-2 text-sm">
+                                <Link href={`/workspace/${workspaceId}`} style={{ color: "#92adc9" }} className="hover:text-white transition-colors">Workspace</Link>
+                                <span className="material-symbols-outlined text-xs" style={{ color: "#56697d" }}>chevron_right</span>
+                                <Link href={`/workspace/${workspaceId}/runs`} style={{ color: "#92adc9" }} className="hover:text-white transition-colors">Runs</Link>
+                                <span className="material-symbols-outlined text-xs" style={{ color: "#56697d" }}>chevron_right</span>
+                                <span className="text-white font-medium">Run #{run.id.slice(0, 8)}</span>
+                            </div>
+                            {/* Quick Actions */}
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={downloadReport}
+                                    disabled={!run.bundle_artifact_id || downloading}
+                                    className="flex items-center gap-2 h-9 px-4 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                                    style={{ border: "1px solid #2a3b4d", color: "#92adc9" }}
+                                >
+                                    <span className="material-symbols-outlined text-lg">download</span>
+                                    <span>{downloading ? "Generating..." : "Download Report"}</span>
+                                </button>
+                                <button className="flex items-center gap-2 h-9 px-4 rounded-lg text-white text-sm font-bold transition-colors" style={{ backgroundColor: "#2b8cee", boxShadow: "0 4px 14px rgba(43,140,238,0.2)" }}>
+                                    <span className="material-symbols-outlined text-lg">replay</span>
+                                    <span>Re-run</span>
+                                </button>
+                            </div>
+                        </div>
+                        {/* Page Heading & Meta */}
+                        <div className="flex items-end justify-between pb-2">
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-4">
+                                    <h1 className="text-white text-3xl font-black tracking-tight">Run #{run.id.slice(0, 8)}</h1>
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full" style={{ backgroundColor: statusBg, border: `1px solid ${statusBorder}`, color: statusColor }}>
+                                        <span className="material-symbols-outlined text-base">{run.status === "passed" ? "check_circle" : run.status === "failed" ? "error" : "sync"}</span>
+                                        <span className="text-sm font-bold capitalize">{run.status}</span>
+                                    </div>
+                                </div>
+                                <p className="text-sm flex items-center gap-2" style={{ color: "#92adc9" }}>
+                                    <span className="material-symbols-outlined text-lg">schedule</span>
+                                    Duration: {formatDuration(run.created_at, run.completed_at)} • Started {new Date(run.created_at).toLocaleString()}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Content Body */}
+                <div className="p-8 max-w-7xl mx-auto w-full flex flex-col gap-6">
+                    {/* Summary Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {/* Card 1: Target Model */}
+                        <div className="rounded-xl p-4 flex flex-col gap-1" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                            <div className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: "#92adc9" }}>Target Model</div>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded" style={{ backgroundColor: "rgba(99,102,241,0.1)", color: "#818cf8" }}>
+                                    <span className="material-symbols-outlined">deployed_code</span>
+                                </div>
+                                <div>
+                                    <div className="text-white font-semibold">{run.model_artifact?.original_filename || "Model"}</div>
+                                    <div className="text-xs" style={{ color: "#56697d" }}>ONNX</div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Card 2: Device */}
+                        <div className="rounded-xl p-4 flex flex-col gap-1" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                            <div className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: "#92adc9" }}>Device</div>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded" style={{ backgroundColor: "rgba(16,185,129,0.1)", color: "#34d399" }}>
+                                    <span className="material-symbols-outlined">smartphone</span>
+                                </div>
+                                <div>
+                                    <div className="text-white font-semibold">{Object.keys(run.device_metrics || {})[0] || "SM8650"}</div>
+                                    <div className="text-xs" style={{ color: "#56697d" }}>Snapdragon</div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Card 3: Inference Time */}
+                        <div className="rounded-xl p-4 flex flex-col gap-1" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                            <div className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: "#92adc9" }}>Inference Time</div>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded" style={{ backgroundColor: "rgba(245,158,11,0.1)", color: "#fbbf24" }}>
+                                    <span className="material-symbols-outlined">speed</span>
+                                </div>
+                                <div>
+                                    <div className="text-white font-semibold font-mono">{(run.normalized_metrics?.inference_time_ms || 0).toFixed(3)} ms</div>
+                                    <div className="text-xs" style={{ color: "#56697d" }}>Avg Latency</div>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Card 4: Peak Memory */}
+                        <div className="rounded-xl p-4 flex flex-col gap-1" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                            <div className="text-xs font-medium uppercase tracking-wider mb-1" style={{ color: "#92adc9" }}>Peak Memory</div>
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 rounded" style={{ backgroundColor: "rgba(236,72,153,0.1)", color: "#f472b6" }}>
+                                    <span className="material-symbols-outlined">memory</span>
+                                </div>
+                                <div>
+                                    <div className="text-white font-semibold font-mono">{(run.normalized_metrics?.peak_memory_mb || 0).toFixed(2)} MB</div>
+                                    <div className="text-xs" style={{ color: "#56697d" }}>Max Usage</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        {/* Quality Gates Section */}
+                        <div className="lg:col-span-1 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-white font-bold text-lg">Quality Gates</h3>
+                                <span className="text-xs px-2 py-1 rounded" style={{ color: "#92adc9", backgroundColor: "#1f2e3d" }}>
+                                    {gatesPassed} Pass, {gatesFailed} Fail
+                                </span>
+                            </div>
+                            <div className="rounded-xl p-5 flex flex-col gap-6" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                                {run.gates_eval?.gates.map((gate, i) => {
+                                    const isPass = gate.passed;
+                                    const barColor = isPass ? "#10b981" : "#ef4444";
+                                    const textColor = isPass ? "#34d399" : "#ef4444";
+                                    const actualValue = gate.actual_value ?? 0;
+                                    const threshold = gate.threshold;
+                                    const percentage = Math.min((actualValue / (threshold * 1.3)) * 100, 100);
+
+                                    return (
+                                        <div key={i} className="flex flex-col gap-2">
+                                            <div className="flex justify-between items-end">
+                                                <span className="text-sm font-medium" style={{ color: "#92adc9" }}>
+                                                    {gate.metric.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                                </span>
+                                                <div className="text-right">
+                                                    <span className="font-bold font-mono" style={{ color: textColor }}>
+                                                        {actualValue?.toFixed(2) ?? "N/A"}
+                                                    </span>
+                                                    <span className="text-xs ml-1" style={{ color: "#56697d" }}>
+                                                        / {formatOperator(gate.operator)}{threshold}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="relative h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: "#1f2e3d" }}>
+                                                {/* Threshold marker */}
+                                                <div className="absolute top-0 bottom-0 w-0.5 z-10 opacity-30" style={{ left: "76%", backgroundColor: "white" }}></div>
+                                                {/* Progress bar */}
+                                                <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: barColor }}></div>
+                                            </div>
+                                            {!isPass && (
+                                                <p className="text-xs mt-0.5 flex items-center gap-1" style={{ color: "rgba(239,68,68,0.8)" }}>
+                                                    <span className="material-symbols-outlined text-xs">warning</span>
+                                                    Exceeded threshold by {Math.abs(((actualValue - threshold) / threshold) * 100).toFixed(0)}%
+                                                </p>
+                                            )}
+                                        </div>
+                                    );
+                                }) || (
+                                        <p style={{ color: "#92adc9" }} className="text-sm">No gates configured</p>
+                                    )}
+                            </div>
+                        </div>
+
+                        {/* Performance Summary Section */}
+                        <div className="lg:col-span-2 flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-white font-bold text-lg">Performance Summary</h3>
+                            </div>
+                            <div className="rounded-xl p-5" style={{ backgroundColor: "#182430", border: "1px solid #2a3b4d" }}>
+                                {run.normalized_metrics && Object.keys(run.normalized_metrics).length > 0 ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                                        {Object.entries(run.normalized_metrics).map(([key, value]) => (
+                                            <div key={key} className="flex flex-col">
+                                                <span className="text-xs uppercase tracking-wider mb-1" style={{ color: "#92adc9" }}>
+                                                    {key.replace(/_/g, " ")}
+                                                </span>
+                                                <span className="text-2xl font-bold font-mono text-white">
+                                                    {typeof value === "number" ? value.toFixed(3) : value}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-8" style={{ color: "#92adc9" }}>
+                                        <span className="material-symbols-outlined text-4xl mb-2 block">analytics</span>
+                                        No metrics available yet
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
         </div>
     );
 }

@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useState, useRef } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Sidebar } from "@/components/Sidebar";
+import { StatCard } from "@/components/ui/StatCard";
 
 interface Artifact {
     id: string;
@@ -32,11 +32,11 @@ export default function ArtifactsPage() {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
+    const [searchQuery, setSearchQuery] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
-    // Helper to safely extract error message from API response
     const getErrorMessage = (data: any): string => {
         if (typeof data.detail === 'string') return data.detail;
         if (Array.isArray(data.detail) && data.detail.length > 0) {
@@ -50,6 +50,7 @@ export default function ArtifactsPage() {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const getAuthHeader = () => {
@@ -136,122 +137,192 @@ export default function ArtifactsPage() {
         setTimeout(() => setSuccess(""), 2000);
     };
 
+    const getFileExtension = (filename: string | null): string => {
+        if (!filename) return "model";
+        const ext = filename.split('.').pop()?.toLowerCase();
+        return ext || "model";
+    };
+
+    const getFileIcon = (ext: string): string => {
+        const iconMap: Record<string, string> = {
+            onnx: "deployed_code",
+            so: "memory",
+            bin: "data_object",
+            pt: "data_object",
+            aimet: "deployed_code",
+        };
+        return iconMap[ext] || "deployed_code";
+    };
+
+    const filteredArtifacts = artifacts.filter(a => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+            a.original_filename?.toLowerCase().includes(query) ||
+            a.id.toLowerCase().includes(query)
+        );
+    });
+
+    const totalSize = artifacts.reduce((sum, a) => sum + a.size_bytes, 0);
+
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex">
+        <div className="min-h-screen bg-background flex">
             <Sidebar workspaceId={workspaceId} workspaceName={workspace?.name || "Loading..."} />
 
-            <main className="flex-1 p-8">
-                <div className="max-w-6xl mx-auto">
-                    {/* Header */}
-                    <div className="flex items-center justify-between mb-8">
-                        <div>
-                            <h1 className="text-2xl font-bold text-white">Model Artifacts</h1>
-                            <p className="text-slate-400">Compiled models for testing on devices</p>
-                        </div>
-                        <div>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                accept=".so,.onnx,.bin,.pt,.aimet"
-                                onChange={handleFileUpload}
-                                className="hidden"
-                                id="artifact-upload"
-                            />
-                            <Button
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploading}
-                                className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                            >
-                                {uploading ? "Uploading..." : "+ Upload Model"}
-                            </Button>
-                        </div>
+            <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                {/* Top Bar */}
+                <header className="h-16 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10 px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">EdgeGate</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-muted-foreground">{workspace?.name || "Workspace"}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="font-semibold text-foreground">Model Artifacts</span>
                     </div>
+                    <div>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".so,.onnx,.bin,.pt,.aimet"
+                            onChange={handleFileUpload}
+                            className="hidden"
+                            id="artifact-upload"
+                        />
+                        <Button
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploading}
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
+                        >
+                            <span className="material-symbols-outlined text-[18px] mr-1.5">upload</span>
+                            {uploading ? "Uploading..." : "Upload Model"}
+                        </Button>
+                    </div>
+                </header>
 
+                <div className="flex-1 overflow-y-auto p-6 max-w-7xl w-full mx-auto space-y-6">
                     {/* Feedback */}
                     {error && (
-                        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400">
+                        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive flex items-center gap-2">
+                            <span className="material-symbols-outlined">error</span>
                             {error}
                         </div>
                     )}
                     {success && (
-                        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400">
+                        <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 flex items-center gap-2">
+                            <span className="material-symbols-outlined">check_circle</span>
                             {success}
                         </div>
                     )}
 
+                    {/* Page Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-black tracking-tight text-foreground">Model Artifacts Repository</h1>
+                            <p className="text-muted-foreground mt-1 text-sm">Compiled models for testing on Snapdragon devices.</p>
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <StatCard title="Total Models" value={artifacts.length.toString()} icon="deployed_code" />
+                        <StatCard title="Total Storage" value={formatSize(totalSize)} icon="storage" />
+                        <StatCard title="ONNX Models" value={artifacts.filter(a => a.original_filename?.endsWith('.onnx')).length.toString()} icon="data_object" />
+                        <StatCard title="Compiled (.so)" value={artifacts.filter(a => a.original_filename?.endsWith('.so')).length.toString()} icon="memory" />
+                    </div>
+
+                    {/* Search */}
+                    <div className="relative w-full max-w-md">
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground text-[20px]">search</span>
+                        <input
+                            className="w-full rounded-lg border border-border bg-card text-foreground focus:outline-0 focus:ring-2 focus:ring-primary focus:border-primary h-11 pl-11 pr-4 text-sm placeholder:text-muted-foreground transition-all"
+                            placeholder="Search models..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                    </div>
+
                     {/* Content */}
                     {loading ? (
-                        <div className="text-slate-400 text-center py-12">Loading...</div>
-                    ) : artifacts.length === 0 ? (
-                        <Card className="bg-slate-900/50 border-slate-800 border-dashed">
-                            <CardContent className="py-16 text-center">
-                                <div className="h-16 w-16 mx-auto mb-4 rounded-full bg-slate-800 flex items-center justify-center">
-                                    <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                    </svg>
-                                </div>
-                                <h3 className="text-lg font-medium text-white mb-2">No model artifacts yet</h3>
-                                <p className="text-slate-400 mb-6 max-w-md mx-auto">
-                                    Upload compiled models (.so, .onnx, .bin) to test on Snapdragon devices.
-                                </p>
-                                <Button
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                                >
-                                    Upload Your First Model
-                                </Button>
-                            </CardContent>
-                        </Card>
+                        <div className="flex items-center justify-center py-12 text-muted-foreground">
+                            <span className="material-symbols-outlined animate-spin mr-2">sync</span>
+                            Loading...
+                        </div>
+                    ) : filteredArtifacts.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-border border-dashed bg-card">
+                            <span className="material-symbols-outlined text-4xl text-muted-foreground mb-4">deployed_code</span>
+                            <h3 className="text-lg font-medium text-foreground mb-2">No model artifacts yet</h3>
+                            <p className="text-muted-foreground mb-6 max-w-md text-center">
+                                Upload compiled models (.so, .onnx, .bin) to test on Snapdragon devices.
+                            </p>
+                            <Button
+                                onClick={() => fileInputRef.current?.click()}
+                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold"
+                            >
+                                Upload Your First Model
+                            </Button>
+                        </div>
                     ) : (
-                        <div className="space-y-4">
-                            {artifacts.map((artifact) => (
-                                <Card key={artifact.id} className="bg-slate-900/50 border-slate-800">
-                                    <CardContent className="py-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <div className="h-12 w-12 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                                                <svg className="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                                </svg>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredArtifacts.map((artifact) => {
+                                const ext = getFileExtension(artifact.original_filename);
+                                const icon = getFileIcon(ext);
+                                return (
+                                    <div
+                                        key={artifact.id}
+                                        className="group bg-card border border-border rounded-xl p-5 hover:border-primary/50 transition-all cursor-pointer"
+                                        onClick={() => copyToClipboard(artifact.id)}
+                                    >
+                                        <div className="flex items-start justify-between mb-4">
+                                            <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-primary text-2xl">{icon}</span>
                                             </div>
-                                            <div>
-                                                <div className="text-white font-medium">
-                                                    {artifact.original_filename || `Model ${artifact.id.slice(0, 8)}`}
-                                                </div>
-                                                <div className="text-sm text-slate-400 font-mono">
-                                                    {artifact.sha256.slice(0, 16)}...
-                                                </div>
-                                            </div>
+                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded text-xs font-bold bg-accent text-muted-foreground border border-border uppercase">
+                                                {ext}
+                                            </span>
                                         </div>
-                                        <div className="flex items-center gap-6">
-                                            <div className="text-right">
-                                                <div className="text-white font-medium">{formatSize(artifact.size_bytes)}</div>
-                                                <div className="text-sm text-slate-400">Size</div>
-                                            </div>
-                                            <div className="text-right">
-                                                <div className="text-white">{new Date(artifact.created_at).toLocaleDateString()}</div>
-                                                <div className="text-sm text-slate-400">Uploaded</div>
-                                            </div>
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                onClick={() => copyToClipboard(artifact.id)}
-                                                className="border-slate-700 text-slate-300 hover:bg-slate-800"
+                                        <h3 className="text-foreground font-semibold truncate mb-1 group-hover:text-primary transition-colors">
+                                            {artifact.original_filename || `Model ${artifact.id.slice(0, 8)}`}
+                                        </h3>
+                                        <p className="text-xs text-muted-foreground font-mono mb-3 truncate">
+                                            {artifact.sha256.slice(0, 24)}...
+                                        </p>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                            <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[16px]">folder</span>
+                                                {formatSize(artifact.size_bytes)}
+                                            </span>
+                                            <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[16px]">schedule</span>
+                                                {new Date(artifact.created_at).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                                            <button
+                                                className="text-primary hover:text-primary/80 text-xs font-semibold inline-flex items-center gap-1 transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); copyToClipboard(artifact.id); }}
                                             >
+                                                <span className="material-symbols-outlined text-[16px]">content_copy</span>
                                                 Copy ID
-                                            </Button>
+                                            </button>
+                                            <span className="text-xs text-muted-foreground font-mono">
+                                                #{artifact.id.slice(0, 8)}
+                                            </span>
                                         </div>
-                                    </CardContent>
-                                </Card>
-                            ))}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
 
                     {/* Usage Info */}
-                    <div className="mt-8 p-4 bg-slate-900/50 border border-slate-800 rounded-lg">
-                        <h3 className="text-white font-medium mb-2">How to use model artifacts</h3>
-                        <ol className="text-sm text-slate-400 space-y-1 list-decimal list-inside">
+                    <div className="p-5 bg-card border border-border rounded-xl">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-primary">info</span>
+                            <h3 className="text-foreground font-semibold">How to use model artifacts</h3>
+                        </div>
+                        <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
                             <li>Upload your compiled model (.so, .onnx, .bin)</li>
-                            <li>Copy the artifact ID</li>
+                            <li>Copy the artifact ID by clicking on the card</li>
                             <li>Use it when triggering a run via CI or API</li>
                         </ol>
                     </div>

@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Sidebar } from "@/components/Sidebar";
 
 interface Integration {
     id: string;
@@ -31,7 +31,6 @@ export default function SettingsPage() {
     const [loading, setLoading] = useState(true);
     const [token, setToken] = useState("");
     const [saving, setSaving] = useState(false);
-    const [testing, setTesting] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [error, setError] = useState("");
 
@@ -39,6 +38,7 @@ export default function SettingsPage() {
 
     useEffect(() => {
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workspaceId]);
 
     const getAuthHeader = () => {
@@ -55,14 +55,12 @@ export default function SettingsPage() {
         if (!headers) return;
 
         try {
-            // Fetch workspace
             const wsRes = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}`, { headers });
             if (wsRes.ok) {
                 const wsData = await wsRes.json();
                 setWorkspace(wsData);
             }
 
-            // Fetch integration (may not exist)
             const intRes = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/qaihub`, { headers });
             if (intRes.ok) {
                 const intData = await intRes.json();
@@ -194,221 +192,218 @@ export default function SettingsPage() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        switch (status) {
-            case "active":
-                return "bg-green-500/20 text-green-400 border-green-500/30";
-            case "disabled":
-                return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
-            default:
-                return "bg-slate-500/20 text-slate-400 border-slate-500/30";
-        }
-    };
-
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-                <div className="text-slate-400">Loading...</div>
+            <div className="min-h-screen bg-background flex items-center justify-center">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="material-symbols-outlined animate-spin">sync</span>
+                    <span>Loading...</span>
+                </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-            {/* Header */}
-            <header className="border-b border-slate-800">
-                <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/dashboard" className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-500" />
-                            <span className="text-xl font-bold text-white">EdgeGate</span>
-                        </Link>
-                        <span className="text-slate-600">/</span>
-                        <Link href={`/workspace/${workspaceId}`} className="text-slate-400 hover:text-white">
-                            {workspace?.name || "Workspace"}
-                        </Link>
-                        <span className="text-slate-600">/</span>
-                        <span className="text-white">Settings</span>
+        <div className="min-h-screen bg-background flex">
+            <Sidebar workspaceId={workspaceId} workspaceName={workspace?.name || "Loading..."} />
+
+            <main className="flex-1 flex flex-col h-screen overflow-hidden">
+                {/* Top Bar */}
+                <header className="h-16 border-b border-border bg-background/80 backdrop-blur sticky top-0 z-10 px-6 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">EdgeGate</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="text-muted-foreground">{workspace?.name || "Workspace"}</span>
+                        <span className="text-muted-foreground">/</span>
+                        <span className="font-semibold text-foreground">Settings</span>
                     </div>
-                    <Link href={`/workspace/${workspaceId}`}>
-                        <Button variant="ghost" className="text-slate-400 hover:text-white">
-                            ← Back
-                        </Button>
-                    </Link>
-                </div>
-            </header>
+                </header>
 
-            <main className="container mx-auto px-6 py-8 max-w-4xl">
-                <h1 className="text-2xl font-bold text-white mb-8">Workspace Settings</h1>
+                <div className="flex-1 overflow-y-auto p-6 max-w-4xl w-full mx-auto space-y-6">
+                    {/* Page Header */}
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight text-foreground">Workspace Settings</h1>
+                        <p className="text-muted-foreground mt-1 text-sm">Configure integrations and workspace preferences.</p>
+                    </div>
 
-                {/* AI Hub Integration */}
-                <Card className="bg-slate-900/50 border-slate-800 mb-8">
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <CardTitle className="text-white flex items-center gap-3">
-                                    <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-                                        <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                        </svg>
-                                    </div>
-                                    Qualcomm AI Hub
-                                </CardTitle>
-                                <CardDescription className="text-slate-400 mt-1">
-                                    Connect your AI Hub API token to run tests on real Snapdragon devices
-                                </CardDescription>
+                    {/* AI Hub Integration */}
+                    <div className="bg-card border border-border rounded-xl overflow-hidden">
+                        <div className="p-6 border-b border-border flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                    <span className="material-symbols-outlined text-white text-2xl">developer_board</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-lg font-bold text-foreground">Qualcomm AI Hub</h2>
+                                    <p className="text-muted-foreground text-sm">Connect to run tests on real Snapdragon devices</p>
+                                </div>
                             </div>
                             {integration && (
-                                <span className={`px-3 py-1 rounded-full text-sm border ${getStatusBadge(integration.status)}`}>
-                                    {integration.status}
+                                <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${integration.status === "active"
+                                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                        : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                    }`}>
+                                    <span className="material-symbols-outlined text-[14px] mr-1 align-text-bottom">
+                                        {integration.status === "active" ? "check_circle" : "pause_circle"}
+                                    </span>
+                                    {integration.status === "active" ? "Active" : "Disabled"}
                                 </span>
                             )}
                         </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                        {integration ? (
-                            <>
-                                {/* Connected State */}
-                                <div className="bg-slate-800/50 rounded-lg p-4">
-                                    <div className="flex items-center justify-between">
+
+                        <div className="p-6 space-y-6">
+                            {integration ? (
+                                <>
+                                    {/* Connected State */}
+                                    <div className="bg-accent rounded-lg p-4 flex items-center justify-between">
                                         <div>
-                                            <div className="text-sm text-slate-400">API Token</div>
-                                            <div className="text-white font-mono">
+                                            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">API Token</div>
+                                            <div className="text-foreground font-mono text-sm">
                                                 ••••••••••••{integration.token_last4}
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <div className="text-sm text-slate-400">Last Updated</div>
-                                            <div className="text-white">
+                                            <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Last Updated</div>
+                                            <div className="text-foreground text-sm">
                                                 {new Date(integration.updated_at).toLocaleDateString()}
                                             </div>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Rotate Token */}
-                                <div className="space-y-3">
-                                    <Label htmlFor="newToken" className="text-slate-300">Rotate Token</Label>
-                                    <div className="flex gap-3">
-                                        <Input
-                                            id="newToken"
-                                            type="password"
-                                            placeholder="Paste new AI Hub API token"
-                                            value={token}
-                                            onChange={(e) => setToken(e.target.value)}
-                                            className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                                        />
+                                    {/* Rotate Token */}
+                                    <div className="space-y-3">
+                                        <Label htmlFor="newToken" className="text-muted-foreground text-sm font-medium">Rotate Token</Label>
+                                        <div className="flex gap-3">
+                                            <Input
+                                                id="newToken"
+                                                type="password"
+                                                placeholder="Paste new AI Hub API token"
+                                                value={token}
+                                                onChange={(e) => setToken(e.target.value)}
+                                                className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                                            />
+                                            <Button
+                                                onClick={rotateToken}
+                                                disabled={!token || saving}
+                                                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shrink-0"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px] mr-1.5">refresh</span>
+                                                {saving ? "Saving..." : "Rotate"}
+                                            </Button>
+                                        </div>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex gap-3 pt-4 border-t border-border">
+                                        {integration.status === "active" ? (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => toggleIntegration(false)}
+                                                disabled={saving}
+                                                className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px] mr-1.5">pause</span>
+                                                Disable
+                                            </Button>
+                                        ) : (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => toggleIntegration(true)}
+                                                disabled={saving}
+                                                className="border-green-500/50 text-green-400 hover:bg-green-500/10"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px] mr-1.5">play_arrow</span>
+                                                Enable
+                                            </Button>
+                                        )}
                                         <Button
-                                            onClick={rotateToken}
-                                            disabled={!token || saving}
-                                            className="bg-cyan-500 hover:bg-cyan-600"
+                                            variant="outline"
+                                            onClick={deleteIntegration}
+                                            disabled={saving}
+                                            className="border-destructive/50 text-destructive hover:bg-destructive/10"
                                         >
-                                            {saving ? "Saving..." : "Rotate"}
+                                            <span className="material-symbols-outlined text-[18px] mr-1.5">delete</span>
+                                            Delete Integration
                                         </Button>
                                     </div>
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex gap-3 pt-4 border-t border-slate-700">
-                                    {integration.status === "active" ? (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => toggleIntegration(false)}
-                                            disabled={saving}
-                                            className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10"
-                                        >
-                                            Disable
-                                        </Button>
-                                    ) : (
-                                        <Button
-                                            variant="outline"
-                                            onClick={() => toggleIntegration(true)}
-                                            disabled={saving}
-                                            className="border-green-500/50 text-green-400 hover:bg-green-500/10"
-                                        >
-                                            Enable
-                                        </Button>
-                                    )}
+                                </>
+                            ) : (
+                                <>
+                                    {/* Not Connected State */}
+                                    <div className="space-y-3">
+                                        <Label htmlFor="token" className="text-muted-foreground text-sm font-medium">API Token</Label>
+                                        <Input
+                                            id="token"
+                                            type="password"
+                                            placeholder="Paste your AI Hub API token"
+                                            value={token}
+                                            onChange={(e) => setToken(e.target.value)}
+                                            className="bg-background border-border text-foreground placeholder:text-muted-foreground"
+                                        />
+                                        <p className="text-muted-foreground text-xs flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[14px]">info</span>
+                                            Get your token from{" "}
+                                            <a
+                                                href="https://aihub.qualcomm.com/settings"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-primary hover:underline"
+                                            >
+                                                AI Hub Settings
+                                            </a>
+                                        </p>
+                                    </div>
                                     <Button
-                                        variant="outline"
-                                        onClick={deleteIntegration}
-                                        disabled={saving}
-                                        className="border-red-500/50 text-red-400 hover:bg-red-500/10"
+                                        onClick={connectToken}
+                                        disabled={!token || saving}
+                                        className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20"
                                     >
-                                        Delete Integration
+                                        <span className="material-symbols-outlined text-[18px] mr-1.5">link</span>
+                                        {saving ? "Connecting..." : "Connect AI Hub"}
                                     </Button>
-                                </div>
-                            </>
-                        ) : (
-                            <>
-                                {/* Not Connected State */}
-                                <div className="space-y-3">
-                                    <Label htmlFor="token" className="text-slate-300">API Token</Label>
-                                    <Input
-                                        id="token"
-                                        type="password"
-                                        placeholder="Paste your AI Hub API token"
-                                        value={token}
-                                        onChange={(e) => setToken(e.target.value)}
-                                        className="bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-500"
-                                    />
-                                    <p className="text-slate-500 text-sm">
-                                        Get your token from{" "}
-                                        <a
-                                            href="https://aihub.qualcomm.com/settings"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-cyan-400 hover:text-cyan-300"
-                                        >
-                                            AI Hub Settings
-                                        </a>
-                                    </p>
-                                </div>
-                                <Button
-                                    onClick={connectToken}
-                                    disabled={!token || saving}
-                                    className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600"
-                                >
-                                    {saving ? "Connecting..." : "Connect AI Hub"}
-                                </Button>
-                            </>
-                        )}
+                                </>
+                            )}
 
-                        {/* Feedback Messages */}
-                        {error && (
-                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                                {error}
-                            </div>
-                        )}
-                        {testResult && (
-                            <div className={`p-3 rounded-lg text-sm ${testResult.success
-                                    ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                                    : "bg-red-500/10 border border-red-500/30 text-red-400"
-                                }`}>
-                                {testResult.message}
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
+                            {/* Feedback Messages */}
+                            {error && (
+                                <div className="p-3 bg-destructive/10 border border-destructive/30 rounded-lg text-destructive text-sm flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-lg">error</span>
+                                    {error}
+                                </div>
+                            )}
+                            {testResult && (
+                                <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${testResult.success
+                                        ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                                        : "bg-destructive/10 border border-destructive/30 text-destructive"
+                                    }`}>
+                                    <span className="material-symbols-outlined text-lg">
+                                        {testResult.success ? "check_circle" : "error"}
+                                    </span>
+                                    {testResult.message}
+                                </div>
+                            )}
+                        </div>
+                    </div>
 
-                {/* Workspace Info */}
-                <Card className="bg-slate-900/50 border-slate-800">
-                    <CardHeader>
-                        <CardTitle className="text-white">Workspace Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <div className="text-sm text-slate-400">Workspace ID</div>
-                                <div className="text-white font-mono text-sm">{workspaceId}</div>
-                            </div>
-                            <div>
-                                <div className="text-sm text-slate-400">Your Role</div>
-                                <div className="text-white capitalize">{workspace?.role || "—"}</div>
+                    {/* Workspace Info */}
+                    <div className="bg-card border border-border rounded-xl overflow-hidden">
+                        <div className="p-6 border-b border-border">
+                            <h2 className="text-lg font-bold text-foreground">Workspace Information</h2>
+                        </div>
+                        <div className="p-6">
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Workspace ID</div>
+                                    <div className="text-foreground font-mono text-sm">{workspaceId}</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your Role</div>
+                                    <div className="text-foreground capitalize">{workspace?.role || "—"}</div>
+                                </div>
                             </div>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </div>
             </main>
         </div>
     );

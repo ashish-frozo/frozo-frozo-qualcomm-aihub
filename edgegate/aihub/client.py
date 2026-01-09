@@ -290,13 +290,20 @@ class QAIHubClient:
                 import qai_hub as hub
                 # Configure authentication
                 # In newer versions (>=0.40.0), use set_session_token
-                if hasattr(hub, "set_session_token"):
-                    hub.set_session_token(self._token)
-                elif hasattr(hub, "hub") and hasattr(hub.hub, "set_session_token"):
-                    hub.hub.set_session_token(self._token)
-                else:
-                    # Fallback for older versions if needed, though we now require >=0.40.0
-                    logger.warning("qai_hub.set_session_token not found. Attempting to proceed without it.")
+                try:
+                    if hasattr(hub, "set_session_token"):
+                        hub.set_session_token(self._token)
+                    elif hasattr(hub, "hub") and hasattr(hub.hub, "set_session_token"):
+                        hub.hub.set_session_token(self._token)
+                except Exception as e:
+                    # If it's already set, we might be able to ignore it
+                    # unless it's a different token.
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    if "ClientConfig has already been set" in str(e):
+                        logger.info("AI Hub session token already set in this process.")
+                    else:
+                        logger.warning(f"Failed to set AI Hub session token: {e}")
                 
                 self._hub = hub
             except ImportError:

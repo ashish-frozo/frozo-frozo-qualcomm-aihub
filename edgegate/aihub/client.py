@@ -416,10 +416,17 @@ class QAIHubClient:
             job = hub.get_job(job_id)
             hub_status = job.get_status()
             status_map = {
-                'PENDING': JobStatus.PENDING,
-                'RUNNING': JobStatus.RUNNING,
-                'SUCCEEDED': JobStatus.COMPLETED,
+                'SUCCESS': JobStatus.COMPLETED,
+                'SUCCEEDED': JobStatus.COMPLETED,  # Keep for backward compatibility
                 'FAILED': JobStatus.FAILED,
+                'CREATED': JobStatus.PENDING,
+                'UNSPECIFIED': JobStatus.PENDING,
+                'OPTIMIZING_MODEL': JobStatus.RUNNING,
+                'PROVISIONING_DEVICE': JobStatus.RUNNING,
+                'MEASURING_PERFORMANCE': JobStatus.RUNNING,
+                'RUNNING_INFERENCE': JobStatus.RUNNING,
+                'QUANTIZING_MODEL': JobStatus.RUNNING,
+                'LINKING_MODELS': JobStatus.RUNNING,
                 'CANCELLED': JobStatus.CANCELLED,
             }
             return JobInfo(

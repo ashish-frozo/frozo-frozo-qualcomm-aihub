@@ -257,6 +257,22 @@ class QAIHubClient:
     Note: This implementation wraps the synchronous SDK in asyncio.
     """
 
+    # Mapping of common chipset IDs or aliases to valid AI Hub device names
+    DEVICE_MAPPING = {
+        "sm8650": "Samsung Galaxy S24 (Family)",
+        "sm8550": "Samsung Galaxy S23 (Family)",
+        "sm8450": "Samsung Galaxy S22 (Family)",
+        "sm8350": "Samsung Galaxy S21 (Family)",
+        "sm8250": "Samsung Galaxy S20 (Family)",
+        "sa8650": "SA8650 (Proxy)",
+        "sa8775": "SA8775 (Proxy)",
+        "sa8255": "SA8255 (Proxy)",
+        "qcs6490": "QCS6490 (Proxy)",
+        "qcs8550": "QCS8550 (Proxy)",
+        "rb5": "RB5 (Proxy)",
+        "rb3": "RB3 Gen 2 (Proxy)",
+    }
+
     def __init__(self, api_token: str):
         """
         Initialize the client.
@@ -333,6 +349,34 @@ class QAIHubClient:
         import asyncio
         hub = self._get_hub()
         
+        # Map device name if it's an alias or chipset ID
+        mapped_device = self.DEVICE_MAPPING.get(device_name.lower(), device_name)
+        
+        # Validate device name
+        try:
+            # Try to get the device directly
+            hub_device = hub.Device(mapped_device)
+        except Exception:
+            # If failed, try to find a match in available devices
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Device '{device_name}' not found. Searching for alternatives...")
+            
+            available_devices = hub.get_devices()
+            match = None
+            for d in available_devices:
+                if mapped_device.lower() in d.name.lower() or d.name.lower() in mapped_device.lower():
+                    match = d
+                    break
+            
+            if match:
+                logger.info(f"Found matching device: {match.name}")
+                hub_device = match
+            else:
+                logger.error(f"No matching device found for '{device_name}'")
+                # Fallback to default if everything fails, or re-raise
+                hub_device = hub.Device("Samsung Galaxy S24 (Family)")
+        
         compile_options = ""
         if target_runtime != TargetRuntime.TFLITE:
             compile_options = f"--target_runtime {target_runtime.value}"
@@ -342,7 +386,7 @@ class QAIHubClient:
         def submit():
             job = hub.submit_compile_job(
                 model=model_path,
-                device=hub.Device(device_name),
+                device=hub_device,
                 input_specs=input_specs,
                 options=compile_options if compile_options else None,
             )

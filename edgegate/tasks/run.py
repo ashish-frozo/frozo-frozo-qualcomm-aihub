@@ -642,6 +642,7 @@ def collect_results(
                 m["compute_units"] = compute_units
         
         logger.info(f"Collected {len(measurements)} measurements for run {run_id} on {device}")
+        logger.info(f"Raw metrics keys: {list(raw_metrics.keys())}")
         if measurements:
             logger.info(f"First measurement: {measurements[0]}")
             
@@ -702,9 +703,10 @@ def evaluate_run(
         if measurements:
             logger.info(f"First measurement for evaluation: {measurements[0]}")
         
-        # Aggregate with warmup exclusion (first measurement)
-        aggregated = aggregate_metrics_median(measurements, warmup_count=1)
-        logger.info(f"Aggregated metrics for {device_name}: {aggregated}")
+        # Aggregate with warmup exclusion (first measurement) if we have multiple
+        warmup_count = 1 if len(measurements) > 1 else 0
+        aggregated = aggregate_metrics_median(measurements, warmup_count=warmup_count)
+        logger.info(f"Aggregated metrics for {device_name} (warmup_count={warmup_count}): {aggregated}")
         device_metrics[device_name] = aggregated
         
         # Merge into all_metrics

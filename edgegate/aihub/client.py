@@ -388,7 +388,7 @@ class QAIHubClient:
                 model=model_path,
                 device=hub_device,
                 input_specs=input_specs,
-                options=compile_options if compile_options else None,
+                options=compile_options,
             )
             return str(job.job_id)
         

@@ -376,6 +376,29 @@ class QAIHubClient:
                 # Fallback to default if everything fails, or re-raise
                 return hub.Device("Samsung Galaxy S24 (Family)")
 
+    def _resolve_model(self, model_url: str):
+        """Resolve a model object from a URL or job ID."""
+        hub = self._get_hub()
+        
+        # Check if it's a job URL or job ID
+        job_id = None
+        if "aihub.qualcomm.com/jobs/" in model_url:
+            job_id = model_url.split("/jobs/")[1].split("/")[0]
+        elif model_url.startswith("j") and len(model_url) <= 12: # Heuristic for job ID
+            job_id = model_url
+            
+        if job_id:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Resolving model from job ID: {job_id}")
+            job = hub.get_job(job_id)
+            if hasattr(job, 'get_target_model'):
+                return job.get_target_model()
+            elif hasattr(job, 'model'):
+                return job.model
+                
+        return model_url
+
     async def submit_compile_job(
         self,
         model_path: str,
@@ -468,10 +491,11 @@ class QAIHubClient:
         import asyncio
         hub = self._get_hub()
         hub_device = self._get_hub_device(device_name)
+        model_obj = self._resolve_model(model_url)
         
         def submit():
             job = hub.submit_profile_job(
-                model=model_url,
+                model=model_obj,
                 device=hub_device,
             )
             return str(job.job_id)
@@ -515,10 +539,11 @@ class QAIHubClient:
         import asyncio
         hub = self._get_hub()
         hub_device = self._get_hub_device(device_name)
+        model_obj = self._resolve_model(model_url)
         
         def submit():
             job = hub.submit_inference_job(
-                model=model_url,
+                model=model_obj,
                 device=hub_device,
                 inputs=inputs,
             )

@@ -602,16 +602,44 @@ def collect_results(
             except (TypeError, ValueError):
                 return default
 
-        # Normalize metrics to expected format
-        measurements = [{
-            "inference_time_ms": safe_float(raw_metrics.get("inference_time_ms")),
-            "peak_memory_mb": safe_float(raw_metrics.get("peak_memory_mb")),
-        }]
+        # AI Hub profile results structure:
+        # {
+        #   'execution_summary': {
+        #     'estimated_inference_time': 364, (microseconds)
+        #     'estimated_inference_peak_memory': 108343296, (bytes)
+        #     ...
+        #   },
+        #   'all_inference_times': [2868, 438, 426, ...], (microseconds)
+        #   ...
+        # }
+        
+        summary = raw_metrics.get("execution_summary", {})
+        all_times = raw_metrics.get("all_inference_times", [])
+        
+        # Convert units: us -> ms, bytes -> MB
+        peak_memory_mb = safe_float(summary.get("estimated_inference_peak_memory")) / (1024 * 1024)
+        
+        if all_times:
+            # Create a measurement for each repeat to allow for median aggregation with warmup exclusion
+            measurements = [
+                {
+                    "inference_time_ms": safe_float(t) / 1000.0,
+                    "peak_memory_mb": peak_memory_mb,
+                }
+                for t in all_times
+            ]
+        else:
+            # Fallback to summary if all_times is missing
+            measurements = [{
+                "inference_time_ms": safe_float(summary.get("estimated_inference_time")) / 1000.0,
+                "peak_memory_mb": peak_memory_mb,
+            }]
         
         # Include compute unit breakdown if available
-        compute_units = raw_metrics.get("compute_units", {})
+        compute_units = summary.get("compute_units", {})
         if compute_units:
-            measurements[0]["compute_units"] = compute_units
+            for m in measurements:
+                m["compute_units"] = compute_units
         
         logger.info(f"Collected metrics for run {run_id}: {raw_metrics}")
         

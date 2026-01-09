@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Create Pipeline Configuration</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Noto+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "surface-dark": "#1A2633", // Slightly lighter than background-dark for cards/modals
+                        "border-dark": "#324d67",
+                        "text-secondary": "#92adc9",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Noto Sans", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white font-display min-h-screen flex flex-col">
+<!-- Main Container used for centering the modal -->
+<div class="relative flex min-h-screen w-full flex-col items-center justify-center p-4 sm:p-6 overflow-hidden">
+<!-- Backdrop Blur/Overlay (Visual only since this is a static design) -->
+<div class="absolute inset-0 z-0 bg-background-dark/80 backdrop-blur-sm"></div>
+<!-- Modal Window -->
+<div class="relative z-10 flex flex-col w-full max-w-[860px] max-h-[90vh] bg-surface-dark rounded-xl border border-border-dark shadow-2xl overflow-hidden">
+<!-- Modal Header -->
+<div class="flex items-center justify-between px-6 py-5 border-b border-border-dark bg-[#15202b]">
+<div>
+<h2 class="text-xl font-bold tracking-tight text-white">Create New Pipeline</h2>
+<p class="text-text-secondary text-sm mt-1">Configure your regression testing workflow on edge devices</p>
+</div>
+<button class="text-text-secondary hover:text-white transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+<!-- Modal Body (Scrollable) -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8">
+<!-- Section 1: General Info -->
+<div class="space-y-4">
+<h3 class="text-white text-lg font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">info</span>
+                        General Information
+                    </h3>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Pipeline Name Input -->
+<label class="flex flex-col gap-2">
+<span class="text-white text-sm font-medium">Pipeline Name</span>
+<input class="form-input w-full rounded-lg border border-border-dark bg-background-dark text-white placeholder:text-text-secondary focus:border-primary focus:ring-1 focus:ring-primary py-3 px-4 text-sm" placeholder="e.g., Nightly Regression - SM8650" type="text"/>
+</label>
+<!-- Description Input -->
+<label class="flex flex-col gap-2 md:col-span-2">
+<span class="text-white text-sm font-medium">Description</span>
+<textarea class="form-textarea w-full rounded-lg border border-border-dark bg-background-dark text-white placeholder:text-text-secondary focus:border-primary focus:ring-1 focus:ring-primary py-3 px-4 text-sm min-h-[80px] resize-none" placeholder="Briefly describe the purpose of this test suite..."></textarea>
+</label>
+</div>
+</div>
+<!-- Section 2: Device Matrix -->
+<div class="space-y-4">
+<div class="flex items-center justify-between">
+<h3 class="text-white text-lg font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">developer_board</span>
+                            Target Devices
+                        </h3>
+<span class="text-xs font-medium px-2 py-1 rounded bg-primary/20 text-primary border border-primary/30">1 Selected</span>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+<!-- Card 1: Selected State -->
+<div class="group cursor-pointer relative flex items-start gap-3 p-3 rounded-lg border-2 border-primary bg-primary/10 transition-all">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/20 text-primary">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="text-white text-sm font-bold truncate">SM8650 (Gen 3)</p>
+<p class="text-text-secondary text-xs">Active • High Tier</p>
+</div>
+<div class="absolute top-3 right-3 text-primary">
+<span class="material-symbols-outlined text-[20px]">check_circle</span>
+</div>
+</div>
+<!-- Card 2: Default State -->
+<div class="group cursor-pointer relative flex items-start gap-3 p-3 rounded-lg border border-border-dark bg-background-dark hover:border-primary/50 hover:bg-[#1c2a38] transition-all">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#253646] text-text-secondary group-hover:text-white">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="text-white text-sm font-medium truncate">SM8550 (Gen 2)</p>
+<p class="text-text-secondary text-xs">Active • Standard</p>
+</div>
+</div>
+<!-- Card 3: Default State -->
+<div class="group cursor-pointer relative flex items-start gap-3 p-3 rounded-lg border border-border-dark bg-background-dark hover:border-primary/50 hover:bg-[#1c2a38] transition-all">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#253646] text-text-secondary group-hover:text-white">
+<span class="material-symbols-outlined">memory</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="text-white text-sm font-medium truncate">SM8475 (Gen 1+)</p>
+<p class="text-text-secondary text-xs">Maintenance</p>
+</div>
+</div>
+<!-- Card 4: Default State -->
+<div class="group cursor-pointer relative flex items-start gap-3 p-3 rounded-lg border border-border-dark bg-background-dark hover:border-primary/50 hover:bg-[#1c2a38] transition-all">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#253646] text-text-secondary group-hover:text-white">
+<span class="material-symbols-outlined">router</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="text-white text-sm font-medium truncate">QCS6490 (IoT)</p>
+<p class="text-text-secondary text-xs">IoT • Low Power</p>
+</div>
+</div>
+<!-- Card 5: Default State -->
+<div class="group cursor-pointer relative flex items-start gap-3 p-3 rounded-lg border border-border-dark bg-background-dark hover:border-primary/50 hover:bg-[#1c2a38] transition-all">
+<div class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#253646] text-text-secondary group-hover:text-white">
+<span class="material-symbols-outlined">smartphone</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="text-white text-sm font-medium truncate">Pixel 8 Pro</p>
+<p class="text-text-secondary text-xs">Reference</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Section 3: Quality Gates -->
+<div class="space-y-4">
+<h3 class="text-white text-lg font-semibold flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-xl">rule</span>
+                        Quality Gates
+                    </h3>
+<div class="flex flex-col gap-3">
+<!-- Header Row -->
+<div class="grid grid-cols-12 gap-3 px-2 mb-1">
+<span class="col-span-5 text-xs font-semibold text-text-secondary uppercase tracking-wider">Metric</span>
+<span class="col-span-3 text-xs font-semibold text-text-secondary uppercase tracking-wider">Operator</span>
+<span class="col-span-3 text-xs font-semibold text-text-secondary uppercase tracking-wider">Threshold</span>
+<span class="col-span-1"></span>
+</div>
+<!-- Row 1 -->
+<div class="grid grid-cols-12 gap-3 items-center bg-background-dark p-3 rounded-lg border border-border-dark">
+<div class="col-span-5">
+<div class="relative">
+<select class="appearance-none w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+<option>Inference Time (Avg)</option>
+<option>Peak Memory Usage</option>
+<option>Accuracy Score</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="col-span-3">
+<div class="relative">
+<select class="appearance-none w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+<option value="lt">&lt; Less than</option>
+<option value="lte">≤ Less or equal</option>
+<option value="gt">&gt; Greater than</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="col-span-3">
+<div class="relative">
+<input class="w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="15"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs">ms</span>
+</div>
+</div>
+<div class="col-span-1 flex justify-center">
+<button class="text-text-secondary hover:text-red-400 transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Row 2 -->
+<div class="grid grid-cols-12 gap-3 items-center bg-background-dark p-3 rounded-lg border border-border-dark">
+<div class="col-span-5">
+<div class="relative">
+<select class="appearance-none w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+<option>Peak Memory Usage</option>
+<option>Inference Time (Avg)</option>
+<option>Accuracy Score</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="col-span-3">
+<div class="relative">
+<select class="appearance-none w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 pr-8 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+<option value="lte">≤ Less or equal</option>
+<option value="lt">&lt; Less than</option>
+<option value="gt">&gt; Greater than</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-text-secondary text-lg pointer-events-none">expand_more</span>
+</div>
+</div>
+<div class="col-span-3">
+<div class="relative">
+<input class="w-full bg-[#253646] border border-border-dark text-white text-sm rounded px-3 py-2 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" type="number" value="512"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary text-xs">MB</span>
+</div>
+</div>
+<div class="col-span-1 flex justify-center">
+<button class="text-text-secondary hover:text-red-400 transition-colors p-1">
+<span class="material-symbols-outlined text-[20px]">delete</span>
+</button>
+</div>
+</div>
+<!-- Add Button -->
+<button class="flex items-center justify-center gap-2 w-full py-2 border border-dashed border-border-dark rounded-lg text-text-secondary hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all text-sm font-medium">
+<span class="material-symbols-outlined text-[18px]">add</span>
+                            Add Quality Gate
+                        </button>
+</div>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-6 py-4 bg-[#15202b] border-t border-border-dark flex justify-end gap-3">
+<button class="px-5 py-2.5 rounded-lg border border-border-dark text-white text-sm font-medium hover:bg-background-dark transition-colors">
+                    Cancel
+                </button>
+<button class="px-5 py-2.5 rounded-lg bg-primary text-white text-sm font-medium hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/20">
+                    Create Pipeline
+                </button>
+</div>
+</div>
+</div>
+</body></html>

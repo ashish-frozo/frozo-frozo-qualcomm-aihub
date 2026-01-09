@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EdgeGate - Model Performance Comparison</title>
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&amp;family=Noto+Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<!-- Icons -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "surface-dark": "#182430",
+                        "surface-border": "#233648",
+                        "text-secondary": "#92adc9",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar for technical feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #101922; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #233648; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #2b8cee; 
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white antialiased overflow-x-hidden">
+<div class="relative flex h-full min-h-screen w-full flex-col">
+<!-- Top Navigation -->
+<header class="sticky top-0 z-50 flex items-center justify-between whitespace-nowrap border-b border-solid border-surface-border bg-background-dark px-6 py-3">
+<div class="flex items-center gap-8">
+<div class="flex items-center gap-4 text-white">
+<div class="size-8 flex items-center justify-center bg-primary/20 rounded text-primary">
+<span class="material-symbols-outlined text-2xl">hub</span>
+</div>
+<h2 class="text-white text-lg font-bold leading-tight tracking-[-0.015em]">EdgeGate</h2>
+</div>
+<div class="hidden md:flex items-center gap-9">
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Dashboard</a>
+<a class="text-white text-sm font-medium leading-normal border-b-2 border-primary py-4" href="#">Test Runs</a>
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Devices</a>
+<a class="text-text-secondary hover:text-white transition-colors text-sm font-medium leading-normal" href="#">Settings</a>
+</div>
+</div>
+<div class="flex flex-1 justify-end gap-6 items-center">
+<label class="hidden md:flex flex-col min-w-40 !h-10 max-w-64">
+<div class="flex w-full flex-1 items-stretch rounded-lg h-full border border-surface-border bg-surface-dark focus-within:border-primary transition-colors">
+<div class="text-text-secondary flex items-center justify-center pl-3">
+<span class="material-symbols-outlined text-[20px]">search</span>
+</div>
+<input class="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg bg-transparent text-white focus:outline-0 focus:ring-0 border-none placeholder:text-text-secondary px-3 text-sm font-normal leading-normal" placeholder="Search run ID..." value=""/>
+</div>
+</label>
+<div class="flex items-center gap-3">
+<button class="bg-surface-border p-2 rounded-full text-text-secondary hover:text-white hover:bg-surface-border/80 transition-colors">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<div class="bg-center bg-no-repeat bg-cover rounded-full size-9 border border-surface-border" data-alt="User profile avatar gradient" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBTaxr6PfUt6xoi27SWD1qvEPcDI7A5jAWcxZxRsF0XdqKA4D7UwNB4ZPHH4MLhsAYDBa4F6vfmQyyL6I4pO2WcuhP1wyEo4XnL5G_R7-cr1MF9jW6SBOhRlbNMMx_DPhxdLRltUiXeNkCnA0OD1w12AS_ODG0xL61CmogGz8sHfXJZTEpMKMd8lAyucX1eovUlnDwA-4JnaVMMDPj3yEzUsE6xAgFZ36rQIuogv89ZDMlXO-cceps2_7g1ulWx8-OnR9bKCbaqRbs");'></div>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col items-center py-8 px-6 sm:px-10">
+<div class="w-full max-w-[1200px] flex flex-col gap-8">
+<!-- Page Header: Run Context -->
+<div class="flex flex-col gap-6 border-b border-surface-border pb-6">
+<div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-3">
+<h1 class="text-white text-3xl font-bold leading-tight tracking-tight">Run Comparison</h1>
+<span class="px-3 py-1 rounded-full bg-red-500/10 text-red-500 text-xs font-bold border border-red-500/20 uppercase tracking-wider">Regression Detected</span>
+</div>
+<div class="flex items-center gap-2 text-text-secondary text-sm">
+<span>Project:</span>
+<span class="text-white font-medium">Edge_Detection_Model_v2</span>
+<span class="mx-2 text-surface-border">|</span>
+<span>Commit:</span>
+<span class="font-mono text-primary">8f2a9c</span>
+</div>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center bg-surface-dark rounded-lg p-1 border border-surface-border">
+<button class="px-3 py-1.5 rounded text-sm font-medium bg-surface-border text-white shadow-sm">Side-by-Side</button>
+<button class="px-3 py-1.5 rounded text-sm font-medium text-text-secondary hover:text-white transition-colors">Diff View</button>
+</div>
+<button class="flex items-center gap-2 px-4 h-10 bg-primary hover:bg-primary/90 transition-colors text-white text-sm font-bold rounded-lg shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[18px]">download</span>
+<span>Export Report</span>
+</button>
+</div>
+</div>
+<!-- Run Selectors -->
+<div class="flex flex-col sm:flex-row items-center gap-4 bg-surface-dark p-4 rounded-xl border border-surface-border">
+<!-- Run A -->
+<div class="flex-1 w-full flex flex-col gap-1">
+<label class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Baseline (Run A)</label>
+<div class="flex items-center justify-between bg-background-dark border border-surface-border rounded-lg p-3">
+<div class="flex items-center gap-3">
+<div class="size-2 rounded-full bg-primary"></div>
+<div>
+<div class="text-sm font-bold text-white">#1042-beta</div>
+<div class="text-xs text-text-secondary">Oct 24, 10:30 AM</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-secondary">arrow_drop_down</span>
+</div>
+</div>
+<!-- VS Badge -->
+<div class="flex items-center justify-center size-8 rounded-full bg-surface-border text-xs font-bold text-text-secondary shrink-0">
+                            VS
+                        </div>
+<!-- Run B -->
+<div class="flex-1 w-full flex flex-col gap-1">
+<label class="text-xs font-semibold text-text-secondary uppercase tracking-wider">Candidate (Run B)</label>
+<div class="flex items-center justify-between bg-background-dark border border-surface-border rounded-lg p-3">
+<div class="flex items-center gap-3">
+<div class="size-2 rounded-full bg-slate-400"></div>
+<div>
+<div class="text-sm font-bold text-white">#1043-rc</div>
+<div class="text-xs text-text-secondary">Oct 24, 11:45 AM</div>
+</div>
+</div>
+<span class="material-symbols-outlined text-text-secondary">arrow_drop_down</span>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI Metrics Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<!-- Metric Card 1: Latency -->
+<div class="flex flex-col rounded-xl bg-surface-dark border border-surface-border p-5 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col gap-1">
+<p class="text-text-secondary text-xs font-bold uppercase tracking-wider">Avg Inference Time</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-white text-3xl font-black tracking-tight tabular-nums">24<span class="text-lg text-text-secondary font-normal">ms</span></h3>
+<span class="flex items-center text-red-500 text-sm font-bold bg-red-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-sm mr-0.5">arrow_upward</span>
+                                        5.2%
+                                    </span>
+</div>
+</div>
+<div class="p-2 bg-surface-border/50 rounded-lg text-text-secondary">
+<span class="material-symbols-outlined">speed</span>
+</div>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-border/50 flex justify-between items-center text-sm">
+<div class="flex flex-col">
+<span class="text-xs text-text-secondary">Baseline</span>
+<span class="font-mono text-white tabular-nums">22.8ms</span>
+</div>
+<div class="h-8 w-px bg-surface-border/50"></div>
+<div class="flex flex-col text-right">
+<span class="text-xs text-text-secondary">Candidate</span>
+<span class="font-mono text-white tabular-nums">24.0ms</span>
+</div>
+</div>
+<!-- Decorative gradient blob -->
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-red-500/5 blur-2xl rounded-full pointer-events-none group-hover:bg-red-500/10 transition-colors"></div>
+</div>
+<!-- Metric Card 2: Memory -->
+<div class="flex flex-col rounded-xl bg-surface-dark border border-surface-border p-5 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col gap-1">
+<p class="text-text-secondary text-xs font-bold uppercase tracking-wider">Peak Memory Usage</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-white text-3xl font-black tracking-tight tabular-nums">448<span class="text-lg text-text-secondary font-normal">MB</span></h3>
+<span class="flex items-center text-emerald-500 text-sm font-bold bg-emerald-500/10 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-sm mr-0.5">arrow_downward</span>
+                                        0.4%
+                                    </span>
+</div>
+</div>
+<div class="p-2 bg-surface-border/50 rounded-lg text-text-secondary">
+<span class="material-symbols-outlined">memory</span>
+</div>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-border/50 flex justify-between items-center text-sm">
+<div class="flex flex-col">
+<span class="text-xs text-text-secondary">Baseline</span>
+<span class="font-mono text-white tabular-nums">450MB</span>
+</div>
+<div class="h-8 w-px bg-surface-border/50"></div>
+<div class="flex flex-col text-right">
+<span class="text-xs text-text-secondary">Candidate</span>
+<span class="font-mono text-white tabular-nums">448MB</span>
+</div>
+</div>
+<div class="absolute -right-6 -top-6 w-24 h-24 bg-emerald-500/5 blur-2xl rounded-full pointer-events-none group-hover:bg-emerald-500/10 transition-colors"></div>
+</div>
+<!-- Metric Card 3: Model Size -->
+<div class="flex flex-col rounded-xl bg-surface-dark border border-surface-border p-5 relative overflow-hidden group">
+<div class="flex justify-between items-start mb-4">
+<div class="flex flex-col gap-1">
+<p class="text-text-secondary text-xs font-bold uppercase tracking-wider">Model Size</p>
+<div class="flex items-baseline gap-2">
+<h3 class="text-white text-3xl font-black tracking-tight tabular-nums">12.4<span class="text-lg text-text-secondary font-normal">MB</span></h3>
+<span class="flex items-center text-text-secondary text-sm font-medium bg-surface-border/50 px-1.5 py-0.5 rounded">
+<span class="material-symbols-outlined text-sm mr-0.5">remove</span>
+                                        0.0%
+                                    </span>
+</div>
+</div>
+<div class="p-2 bg-surface-border/50 rounded-lg text-text-secondary">
+<span class="material-symbols-outlined">sd_storage</span>
+</div>
+</div>
+<div class="mt-auto pt-4 border-t border-surface-border/50 flex justify-between items-center text-sm">
+<div class="flex flex-col">
+<span class="text-xs text-text-secondary">Baseline</span>
+<span class="font-mono text-white tabular-nums">12.4MB</span>
+</div>
+<div class="h-8 w-px bg-surface-border/50"></div>
+<div class="flex flex-col text-right">
+<span class="text-xs text-text-secondary">Candidate</span>
+<span class="font-mono text-white tabular-nums">12.4MB</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dual Bar Chart Section -->
+<div class="flex flex-col rounded-xl bg-surface-dark border border-surface-border p-6 shadow-sm">
+<div class="flex flex-wrap justify-between items-center gap-4 mb-8">
+<div>
+<h3 class="text-white text-lg font-bold">Inference Latency by Device Target</h3>
+<p class="text-text-secondary text-sm">Comparing execution time across regression test hardware pool.</p>
+</div>
+<!-- Legend -->
+<div class="flex items-center gap-4 text-sm font-medium">
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-sm bg-primary"></div>
+<span class="text-white">Run A (#1042)</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="size-3 rounded-sm bg-slate-500"></div>
+<span class="text-white">Run B (#1043)</span>
+</div>
+</div>
+</div>
+<!-- CSS Chart Container -->
+<div class="w-full h-[280px] flex items-end justify-between gap-2 sm:gap-8 px-2 sm:px-8 border-b border-surface-border/50 relative">
+<!-- Y-Axis Grid Lines (Visual only) -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8">
+<div class="w-full border-t border-dashed border-surface-border/30"></div>
+<div class="w-full border-t border-dashed border-surface-border/30"></div>
+<div class="w-full border-t border-dashed border-surface-border/30"></div>
+<div class="w-full border-t border-dashed border-surface-border/30"></div>
+<div class="w-full"></div>
+</div>
+<!-- Bar Group 1: Jetson Nano -->
+<div class="flex flex-col items-center gap-3 w-full group relative z-10 cursor-pointer">
+<!-- Tooltip (Hidden by default) -->
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-border text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl border border-white/10 pointer-events-none">
+                                A: 45ms | B: 48ms (+6%)
+                            </div>
+<div class="flex items-end gap-1 h-[240px] w-full max-w-[60px] justify-center">
+<div class="w-full bg-primary rounded-t-sm hover:bg-primary/90 transition-all" style="height: 65%;"></div>
+<div class="w-full bg-slate-500 rounded-t-sm hover:bg-slate-400 transition-all" style="height: 70%;"></div>
+</div>
+<span class="text-xs font-semibold text-text-secondary text-center">Jetson Nano</span>
+</div>
+<!-- Bar Group 2: RPi 4 -->
+<div class="flex flex-col items-center gap-3 w-full group relative z-10 cursor-pointer">
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-border text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl border border-white/10 pointer-events-none">
+                                A: 82ms | B: 83ms (+1.2%)
+                            </div>
+<div class="flex items-end gap-1 h-[240px] w-full max-w-[60px] justify-center">
+<div class="w-full bg-primary rounded-t-sm hover:bg-primary/90 transition-all" style="height: 85%;"></div>
+<div class="w-full bg-slate-500 rounded-t-sm hover:bg-slate-400 transition-all" style="height: 86%;"></div>
+</div>
+<span class="text-xs font-semibold text-text-secondary text-center">Raspberry Pi 4</span>
+</div>
+<!-- Bar Group 3: Pixel 6 -->
+<div class="flex flex-col items-center gap-3 w-full group relative z-10 cursor-pointer">
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-border text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl border border-white/10 pointer-events-none">
+                                A: 12ms | B: 14ms (+16%)
+                            </div>
+<div class="flex items-end gap-1 h-[240px] w-full max-w-[60px] justify-center">
+<div class="w-full bg-primary rounded-t-sm hover:bg-primary/90 transition-all" style="height: 25%;"></div>
+<div class="w-full bg-slate-500 rounded-t-sm hover:bg-slate-400 transition-all" style="height: 32%;"></div>
+</div>
+<span class="text-xs font-semibold text-text-secondary text-center">Pixel 6 (NPU)</span>
+</div>
+<!-- Bar Group 4: Coral Dev -->
+<div class="flex flex-col items-center gap-3 w-full group relative z-10 cursor-pointer">
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-border text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl border border-white/10 pointer-events-none">
+                                A: 8ms | B: 8ms (0%)
+                            </div>
+<div class="flex items-end gap-1 h-[240px] w-full max-w-[60px] justify-center">
+<div class="w-full bg-primary rounded-t-sm hover:bg-primary/90 transition-all" style="height: 15%;"></div>
+<div class="w-full bg-slate-500 rounded-t-sm hover:bg-slate-400 transition-all" style="height: 15%;"></div>
+</div>
+<span class="text-xs font-semibold text-text-secondary text-center">Coral Dev</span>
+</div>
+<!-- Bar Group 5: AWS g4dn -->
+<div class="flex flex-col items-center gap-3 w-full group relative z-10 cursor-pointer">
+<div class="absolute -top-12 left-1/2 -translate-x-1/2 bg-surface-border text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-xl border border-white/10 pointer-events-none">
+                                A: 4ms | B: 4.2ms (+5%)
+                            </div>
+<div class="flex items-end gap-1 h-[240px] w-full max-w-[60px] justify-center">
+<div class="w-full bg-primary rounded-t-sm hover:bg-primary/90 transition-all" style="height: 10%;"></div>
+<div class="w-full bg-slate-500 rounded-t-sm hover:bg-slate-400 transition-all" style="height: 11%;"></div>
+</div>
+<span class="text-xs font-semibold text-text-secondary text-center">AWS g4dn.xl</span>
+</div>
+</div>
+</div>
+<!-- Layer Analysis Table -->
+<div class="flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<h2 class="text-white text-xl font-bold leading-tight">Layer-by-Layer Delta Analysis</h2>
+<div class="flex items-center gap-2">
+<div class="relative">
+<span class="absolute inset-y-0 left-0 flex items-center pl-2 text-text-secondary">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+</span>
+<input class="pl-8 pr-3 py-1.5 bg-surface-dark border border-surface-border rounded text-sm text-white placeholder:text-text-secondary focus:ring-1 focus:ring-primary focus:border-primary outline-none" placeholder="Filter layers..." type="text"/>
+</div>
+</div>
+</div>
+<div class="overflow-hidden rounded-xl border border-surface-border bg-surface-dark shadow-sm">
+<div class="overflow-x-auto">
+<table class="w-full text-left text-sm border-collapse">
+<thead class="bg-[#1e2d3b] text-text-secondary uppercase text-xs font-semibold tracking-wider">
+<tr>
+<th class="px-6 py-4 font-medium border-b border-surface-border">Layer Name</th>
+<th class="px-6 py-4 font-medium border-b border-surface-border">Type</th>
+<th class="px-6 py-4 font-medium border-b border-surface-border text-right">Run A (ms)</th>
+<th class="px-6 py-4 font-medium border-b border-surface-border text-right">Run B (ms)</th>
+<th class="px-6 py-4 font-medium border-b border-surface-border text-right">Delta</th>
+<th class="px-6 py-4 font-medium border-b border-surface-border w-[140px]">Impact</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-surface-border">
+<!-- Row 1: High Regression -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="font-medium text-white group-hover:text-primary transition-colors">conv2d_block_14</div>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">Conv2D</span>
+</td>
+<td class="px-6 py-4 text-right font-mono text-text-secondary tabular-nums">1.24</td>
+<td class="px-6 py-4 text-right font-mono text-white tabular-nums">2.48</td>
+<td class="px-6 py-4 text-right font-mono">
+<span class="text-red-500 bg-red-500/10 px-1.5 py-0.5 rounded text-xs font-bold">+100%</span>
+</td>
+<td class="px-6 py-4">
+<div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+<div class="h-full bg-red-500 w-[90%]"></div>
+</div>
+</td>
+</tr>
+<!-- Row 2: Minor Regression -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="font-medium text-white group-hover:text-primary transition-colors">depthwise_conv_3</div>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">Depthwise</span>
+</td>
+<td class="px-6 py-4 text-right font-mono text-text-secondary tabular-nums">0.86</td>
+<td class="px-6 py-4 text-right font-mono text-white tabular-nums">0.92</td>
+<td class="px-6 py-4 text-right font-mono">
+<span class="text-red-400 text-xs font-bold">+7.0%</span>
+</td>
+<td class="px-6 py-4">
+<div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+<div class="h-full bg-red-400 w-[30%]"></div>
+</div>
+</td>
+</tr>
+<!-- Row 3: Neutral -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="font-medium text-white group-hover:text-primary transition-colors">batch_norm_08</div>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-500/10 text-slate-400 border border-slate-500/20">BatchNorm</span>
+</td>
+<td class="px-6 py-4 text-right font-mono text-text-secondary tabular-nums">0.12</td>
+<td class="px-6 py-4 text-right font-mono text-white tabular-nums">0.12</td>
+<td class="px-6 py-4 text-right font-mono">
+<span class="text-text-secondary text-xs">0.0%</span>
+</td>
+<td class="px-6 py-4">
+<div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+<div class="h-full bg-text-secondary w-[2%]"></div>
+</div>
+</td>
+</tr>
+<!-- Row 4: Improvement -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="font-medium text-white group-hover:text-primary transition-colors">fully_connected_head</div>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20">Dense</span>
+</td>
+<td class="px-6 py-4 text-right font-mono text-text-secondary tabular-nums">4.50</td>
+<td class="px-6 py-4 text-right font-mono text-white tabular-nums">4.10</td>
+<td class="px-6 py-4 text-right font-mono">
+<span class="text-emerald-500 text-xs font-bold">-8.9%</span>
+</td>
+<td class="px-6 py-4">
+<div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+<div class="h-full bg-emerald-500 w-[40%]"></div>
+</div>
+</td>
+</tr>
+<!-- Row 5: Improvement -->
+<tr class="hover:bg-white/[0.02] transition-colors group">
+<td class="px-6 py-4">
+<div class="font-medium text-white group-hover:text-primary transition-colors">dropout_3</div>
+</td>
+<td class="px-6 py-4">
+<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-pink-500/10 text-pink-400 border border-pink-500/20">Dropout</span>
+</td>
+<td class="px-6 py-4 text-right font-mono text-text-secondary tabular-nums">0.05</td>
+<td class="px-6 py-4 text-right font-mono text-white tabular-nums">0.05</td>
+<td class="px-6 py-4 text-right font-mono">
+<span class="text-text-secondary text-xs">0.0%</span>
+</td>
+<td class="px-6 py-4">
+<div class="h-1.5 w-full bg-surface-border rounded-full overflow-hidden">
+<div class="h-full bg-text-secondary w-[0%]"></div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="flex items-center justify-between border-t border-surface-border px-6 py-3 bg-[#1e2d3b]/50">
+<p class="text-xs text-text-secondary">Showing 5 of 142 layers</p>
+<div class="flex gap-2">
+<button class="p-1 rounded hover:bg-surface-border text-text-secondary hover:text-white disabled:opacity-50" disabled="">
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</button>
+<button class="p-1 rounded hover:bg-surface-border text-text-secondary hover:text-white">
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>EdgeGate Workspace Overview</title>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#0d1117",
+                        "card-dark": "#161b22",
+                        "border-dark": "#30363d",
+                        "subtle-text": "#8b949e",
+                        "success": "#238636",
+                        "error": "#da3633",
+                        "warning": "#d29922",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"],
+                        "mono": ["JetBrains Mono", "monospace"],
+                    },
+                    borderRadius: { "DEFAULT": "0.375rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        /* Custom scrollbar for technical feel */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #0d1117; }
+        ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #586069; }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white antialiased overflow-hidden">
+<div class="flex h-screen w-full overflow-hidden">
+<!-- Sidebar -->
+<aside class="w-64 flex-shrink-0 border-r border-border-dark bg-[#0d1117] flex flex-col justify-between">
+<div>
+<!-- Logo / Workspace Header -->
+<div class="h-16 flex items-center px-4 border-b border-border-dark">
+<div class="flex items-center gap-3">
+<div class="size-8 rounded bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center text-white font-bold text-lg">
+                            E
+                        </div>
+<div class="flex flex-col">
+<span class="text-sm font-semibold text-white leading-tight">EdgeGate</span>
+<span class="text-xs text-subtle-text">Engineering</span>
+</div>
+</div>
+</div>
+<!-- Navigation -->
+<nav class="flex flex-col gap-1 p-3">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md bg-primary/10 text-primary border border-primary/20" href="#">
+<span class="material-symbols-outlined text-[20px]">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">alt_route</span>
+<span class="text-sm font-medium">Pipelines</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">play_circle</span>
+<span class="text-sm font-medium">Runs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">deployed_code</span>
+<span class="text-sm font-medium">Artifacts</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="text-sm font-medium">Settings</span>
+</a>
+</nav>
+</div>
+<!-- Bottom User Section -->
+<div class="p-3 border-t border-border-dark">
+<button class="flex items-center gap-3 w-full px-3 py-2 rounded-md hover:bg-white/5 transition-colors text-left">
+<div class="size-8 rounded-full bg-cover bg-center" data-alt="User profile picture" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDt8u85OFIxvapeYBcGVEpGIUCZiKeeN21bthLP1uZDZRHPrqs1CkT5aSLohwpZA9-bppEXCFKJiAHmZBEuiafMqMt_EslCa2EOQwrjg0bFm0rd4s8pEEAKElQlUw7FHTxPhxWt-1Ei9aRcIYMVkOyxu_7DR9Mh_kJoH_cNWqECklmkDHjnNrPx_fAvPNsaE91cHGSQAO5kk_lXI3aAYCTZYJQf4ozlcXqaTMmZG-Yyo9HU5xxZYKwLET1htcCa_Uwj472OD1l2bCU');"></div>
+<div class="flex flex-col overflow-hidden">
+<span class="text-sm font-medium text-white truncate">Alex Chen</span>
+<span class="text-xs text-subtle-text truncate">alex@edgegate.ai</span>
+</div>
+<span class="material-symbols-outlined text-subtle-text ml-auto text-[16px]">unfold_more</span>
+</button>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-full min-w-0 overflow-y-auto bg-background-light dark:bg-[#0d1117]">
+<!-- Top Bar / Breadcrumbs & Actions -->
+<header class="h-16 border-b border-border-dark bg-[#0d1117]/80 backdrop-blur sticky top-0 z-10 px-6 flex items-center justify-between">
+<div class="flex items-center gap-2 text-sm">
+<span class="text-subtle-text">EdgeGate</span>
+<span class="text-subtle-text">/</span>
+<span class="text-subtle-text">Workspace</span>
+<span class="text-subtle-text">/</span>
+<span class="font-semibold text-white">Overview</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded border border-border-dark bg-card-dark text-xs font-mono text-subtle-text">
+<span class="w-2 h-2 rounded-full bg-success"></span>
+                        System Healthy
+                    </div>
+<button class="flex items-center justify-center h-8 px-4 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded transition-colors shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-[18px] mr-1.5">add</span>
+                        New Run
+                    </button>
+</div>
+</header>
+<div class="p-6 max-w-7xl w-full mx-auto space-y-6">
+<!-- Stats Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Total Runs -->
+<div class="bg-card-dark border border-border-dark rounded-lg p-5 flex flex-col justify-between h-32 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-subtle-text text-xs font-medium uppercase tracking-wider">Total Runs</span>
+<span class="material-symbols-outlined text-subtle-text text-[20px]">bar_chart</span>
+</div>
+<div>
+<div class="text-2xl font-bold text-white tracking-tight">8,494</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-success text-[16px]">trending_up</span>
+<span class="text-success text-xs font-medium">+12%</span>
+<span class="text-subtle-text text-xs ml-1">vs last week</span>
+</div>
+</div>
+</div>
+<!-- Pass Rate -->
+<div class="bg-card-dark border border-border-dark rounded-lg p-5 flex flex-col justify-between h-32 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-subtle-text text-xs font-medium uppercase tracking-wider">Pass Rate</span>
+<span class="material-symbols-outlined text-subtle-text text-[20px]">check_circle</span>
+</div>
+<div>
+<div class="text-2xl font-bold text-white tracking-tight">94.2%</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-success text-[16px]">trending_up</span>
+<span class="text-success text-xs font-medium">+2.1%</span>
+<span class="text-subtle-text text-xs ml-1">improvement</span>
+</div>
+</div>
+</div>
+<!-- Active Pipelines -->
+<div class="bg-card-dark border border-border-dark rounded-lg p-5 flex flex-col justify-between h-32 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-subtle-text text-xs font-medium uppercase tracking-wider">Active Pipelines</span>
+<span class="material-symbols-outlined text-subtle-text text-[20px]">account_tree</span>
+</div>
+<div>
+<div class="text-2xl font-bold text-white tracking-tight">8</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="text-subtle-text text-xs">Running concurrently</span>
+</div>
+</div>
+</div>
+<!-- Avg Latency -->
+<div class="bg-card-dark border border-border-dark rounded-lg p-5 flex flex-col justify-between h-32 hover:border-white/20 transition-colors">
+<div class="flex justify-between items-start">
+<span class="text-subtle-text text-xs font-medium uppercase tracking-wider">Avg Latency</span>
+<span class="material-symbols-outlined text-subtle-text text-[20px]">speed</span>
+</div>
+<div>
+<div class="text-2xl font-bold text-white tracking-tight font-mono">14ms</div>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-success text-[16px]">arrow_downward</span>
+<span class="text-success text-xs font-medium">-2ms</span>
+<span class="text-subtle-text text-xs ml-1">performance gain</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Runs Section -->
+<div class="flex flex-col gap-4">
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+<h2 class="text-lg font-semibold text-white">Recent Runs</h2>
+<!-- Search & Filter -->
+<div class="flex items-center gap-2">
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-subtle-text group-focus-within:text-white transition-colors text-[20px]">search</span>
+<input class="bg-card-dark border border-border-dark rounded-md py-1.5 pl-9 pr-3 text-sm text-white placeholder-subtle-text focus:ring-1 focus:ring-primary focus:border-primary block w-full sm:w-64" placeholder="Search pipelines, models..." type="text"/>
+</div>
+<button class="flex items-center gap-2 px-3 py-1.5 bg-card-dark border border-border-dark rounded-md text-sm text-subtle-text hover:text-white hover:border-white/30 transition-colors">
+<span class="material-symbols-outlined text-[18px]">filter_list</span>
+                                Filter
+                            </button>
+</div>
+</div>
+<!-- Table Container -->
+<div class="border border-border-dark rounded-lg overflow-hidden bg-card-dark">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-white/5 border-b border-border-dark text-xs uppercase tracking-wider text-subtle-text font-medium">
+<th class="px-6 py-3">Status</th>
+<th class="px-6 py-3">Run ID</th>
+<th class="px-6 py-3">Pipeline &amp; Model</th>
+<th class="px-6 py-3">Device Target</th>
+<th class="px-6 py-3">Duration</th>
+<th class="px-6 py-3 text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark">
+<!-- Row 1: Running -->
+<tr class="group hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="text-sm text-white font-medium">Running</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="font-mono text-sm text-subtle-text group-hover:text-primary transition-colors cursor-pointer">#8493</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">LLM Quantization</span>
+<span class="text-xs text-subtle-text">v2.4.1-rc</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-subtle-text text-[18px]">smartphone</span>
+<span class="text-sm text-gray-300">Galaxy S23</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white">2m 45s</span>
+<span class="text-xs text-subtle-text">Started 3m ago</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-subtle-text hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 2: Failed -->
+<tr class="group hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-error text-[18px]">cancel</span>
+<span class="text-sm text-white font-medium">Failed</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="font-mono text-sm text-subtle-text group-hover:text-primary transition-colors cursor-pointer">#8492</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Object Detection v2</span>
+<span class="text-xs text-subtle-text">v2.4.0-stable</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-subtle-text text-[18px]">smartphone</span>
+<span class="text-sm text-gray-300">Pixel 7 Pro</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white">45s</span>
+<span class="text-xs text-subtle-text">Ended 12m ago</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-subtle-text hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 3: Success -->
+<tr class="group hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-success text-[18px]">check_circle</span>
+<span class="text-sm text-white font-medium">Success</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="font-mono text-sm text-subtle-text group-hover:text-primary transition-colors cursor-pointer">#8491</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Depth Estimation</span>
+<span class="text-xs text-subtle-text">dev-branch-xyz</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-subtle-text text-[18px]">memory</span>
+<span class="text-sm text-gray-300">Snapdragon 8 Gen 3</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white">12m 10s</span>
+<span class="text-xs text-subtle-text">Ended 45m ago</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-subtle-text hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 4: Success -->
+<tr class="group hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-success text-[18px]">check_circle</span>
+<span class="text-sm text-white font-medium">Success</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="font-mono text-sm text-subtle-text group-hover:text-primary transition-colors cursor-pointer">#8490</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Face Auth Model</span>
+<span class="text-xs text-subtle-text">v1.2.9</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-subtle-text text-[18px]">memory</span>
+<span class="text-sm text-gray-300">Snapdragon 8 Gen 2</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white">5m 32s</span>
+<span class="text-xs text-subtle-text">Ended 1h ago</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-subtle-text hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+<!-- Row 5: Warning / Partial -->
+<tr class="group hover:bg-white/5 transition-colors">
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-warning text-[18px]">warning</span>
+<span class="text-sm text-white font-medium">Warning</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<span class="font-mono text-sm text-subtle-text group-hover:text-primary transition-colors cursor-pointer">#8489</span>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-medium text-white">Voice Isolation</span>
+<span class="text-xs text-subtle-text">v3.0.0-alpha</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-subtle-text text-[18px]">smartphone</span>
+<span class="text-sm text-gray-300">Xiaomi 13</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap">
+<div class="flex flex-col">
+<span class="text-sm text-white">8m 05s</span>
+<span class="text-xs text-subtle-text">Ended 2h ago</span>
+</div>
+</td>
+<td class="px-6 py-4 whitespace-nowrap text-right">
+<button class="text-subtle-text hover:text-white transition-colors">
+<span class="material-symbols-outlined">more_horiz</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination Footer -->
+<div class="bg-[#161b22] px-4 py-3 border-t border-border-dark flex items-center justify-between sm:px-6">
+<div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+<div>
+<p class="text-sm text-subtle-text">
+                                        Showing <span class="font-medium text-white">1</span> to <span class="font-medium text-white">5</span> of <span class="font-medium text-white">248</span> results
+                                    </p>
+</div>
+<div>
+<nav aria-label="Pagination" class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
+<a class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-border-dark bg-[#161b22] text-sm font-medium text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="sr-only">Previous</span>
+<span class="material-symbols-outlined text-[18px]">chevron_left</span>
+</a>
+<a aria-current="page" class="z-10 bg-primary border-primary text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium" href="#">
+                                            1
+                                        </a>
+<a class="bg-[#161b22] border-border-dark text-subtle-text hover:bg-white/5 hover:text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                            2
+                                        </a>
+<a class="bg-[#161b22] border-border-dark text-subtle-text hover:bg-white/5 hover:text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                            3
+                                        </a>
+<span class="relative inline-flex items-center px-4 py-2 border border-border-dark bg-[#161b22] text-sm font-medium text-subtle-text">
+                                            ...
+                                        </span>
+<a class="bg-[#161b22] border-border-dark text-subtle-text hover:bg-white/5 hover:text-white relative inline-flex items-center px-4 py-2 border text-sm font-medium transition-colors" href="#">
+                                            42
+                                        </a>
+<a class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-border-dark bg-[#161b22] text-sm font-medium text-subtle-text hover:bg-white/5 hover:text-white transition-colors" href="#">
+<span class="sr-only">Next</span>
+<span class="material-symbols-outlined text-[18px]">chevron_right</span>
+</a>
+</nav>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

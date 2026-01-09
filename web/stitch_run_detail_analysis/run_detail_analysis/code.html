@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Run Detail Analysis - EdgeGate</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2b8cee",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                        "card-dark": "#182430",
+                        "border-dark": "#2a3b4d",
+                    },
+                    fontFamily: {
+                        "display": ["Inter", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        /* Custom scrollbar for dark mode technical feel */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #101922; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a3b4d; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b5269; 
+        }
+        .chart-grid line {
+            stroke: #2a3b4d;
+            stroke-dasharray: 4;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display min-h-screen flex overflow-hidden">
+<!-- Sidebar -->
+<div class="w-64 flex-shrink-0 border-r border-border-dark dark:bg-background-dark hidden md:flex flex-col">
+<div class="flex flex-col h-full p-4">
+<div class="flex items-center gap-2 mb-8 px-2">
+<div class="w-8 h-8 rounded bg-primary flex items-center justify-center">
+<span class="material-symbols-outlined text-white" style="font-size: 20px;">hub</span>
+</div>
+<div class="flex flex-col">
+<h1 class="text-white text-base font-bold leading-none">EdgeGate</h1>
+<p class="text-[#92adc9] text-xs font-normal mt-1">CI/CD Platform</p>
+</div>
+</div>
+<nav class="flex flex-col gap-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#92adc9] hover:bg-[#1f2e3d] transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">dashboard</span>
+<span class="text-sm font-medium group-hover:text-white">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-primary fill-1">play_circle</span>
+<span class="text-sm font-medium">Runs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#92adc9] hover:bg-[#1f2e3d] transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">devices</span>
+<span class="text-sm font-medium group-hover:text-white">Devices</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#92adc9] hover:bg-[#1f2e3d] transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">model_training</span>
+<span class="text-sm font-medium group-hover:text-white">Models</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-lg text-[#92adc9] hover:bg-[#1f2e3d] transition-colors group" href="#">
+<span class="material-symbols-outlined group-hover:text-white">settings</span>
+<span class="text-sm font-medium group-hover:text-white">Settings</span>
+</a>
+</nav>
+<div class="mt-auto">
+<div class="flex items-center gap-3 px-3 py-3 rounded-lg bg-[#1f2e3d] border border-border-dark">
+<div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">JD</div>
+<div class="flex flex-col">
+<span class="text-sm text-white font-medium">Jane Doe</span>
+<span class="text-xs text-[#92adc9]">ML Ops Lead</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto relative">
+<!-- Top Navigation / Breadcrumbs -->
+<header class="sticky top-0 z-10 bg-background-dark/95 backdrop-blur-sm border-b border-border-dark px-8 py-4">
+<div class="flex flex-col gap-4 max-w-7xl mx-auto">
+<div class="flex items-center justify-between">
+<!-- Breadcrumbs -->
+<div class="flex items-center gap-2 text-sm">
+<a class="text-[#92adc9] hover:text-white transition-colors" href="#">Project Alpha</a>
+<span class="text-[#56697d] text-xs material-symbols-outlined">chevron_right</span>
+<a class="text-[#92adc9] hover:text-white transition-colors" href="#">Regression Tests</a>
+<span class="text-[#56697d] text-xs material-symbols-outlined">chevron_right</span>
+<span class="text-white font-medium">Run #39201</span>
+</div>
+<!-- Quick Actions -->
+<div class="flex gap-3">
+<button class="flex items-center gap-2 h-9 px-4 rounded-lg border border-border-dark hover:bg-[#2a3b4d] text-[#92adc9] text-sm font-medium transition-colors">
+<span class="material-symbols-outlined text-lg">download</span>
+<span>Download Logs</span>
+</button>
+<button class="flex items-center gap-2 h-9 px-4 rounded-lg bg-primary hover:bg-blue-600 text-white text-sm font-bold shadow-lg shadow-blue-500/20 transition-colors">
+<span class="material-symbols-outlined text-lg">replay</span>
+<span>Re-run</span>
+</button>
+</div>
+</div>
+<!-- Page Heading & Meta -->
+<div class="flex items-end justify-between pb-2">
+<div class="flex flex-col gap-2">
+<div class="flex items-center gap-4">
+<h1 class="text-white text-3xl font-black tracking-tight">Run #39201</h1>
+<div class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500">
+<span class="material-symbols-outlined text-base">error</span>
+<span class="text-sm font-bold">Failed</span>
+</div>
+</div>
+<p class="text-[#92adc9] text-sm flex items-center gap-2">
+<span class="material-symbols-outlined text-lg">schedule</span>
+                            Duration: 4m 12s • Started 15 mins ago
+                        </p>
+</div>
+</div>
+</div>
+</header>
+<!-- Content Body -->
+<div class="p-8 max-w-7xl mx-auto w-full flex flex-col gap-6">
+<!-- Summary Grid -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1 -->
+<div class="bg-card-dark rounded-xl border border-border-dark p-4 flex flex-col gap-1">
+<div class="text-[#92adc9] text-xs font-medium uppercase tracking-wider mb-1">Target Model</div>
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-indigo-500/10 text-indigo-400">
+<span class="material-symbols-outlined">extension</span>
+</div>
+<div>
+<div class="text-white font-semibold">YOLOv8-Nano</div>
+<div class="text-[#56697d] text-xs">v2.1.0 • Pytorch</div>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-card-dark rounded-xl border border-border-dark p-4 flex flex-col gap-1">
+<div class="text-[#92adc9] text-xs font-medium uppercase tracking-wider mb-1">Device</div>
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-emerald-500/10 text-emerald-400">
+<span class="material-symbols-outlined">smartphone</span>
+</div>
+<div>
+<div class="text-white font-semibold">Snapdragon 8 Gen 3</div>
+<div class="text-[#56697d] text-xs">Galaxy S24 Ultra</div>
+</div>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="bg-card-dark rounded-xl border border-border-dark p-4 flex flex-col gap-1">
+<div class="text-[#92adc9] text-xs font-medium uppercase tracking-wider mb-1">Environment</div>
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-amber-500/10 text-amber-400">
+<span class="material-symbols-outlined">android</span>
+</div>
+<div>
+<div class="text-white font-semibold">Android 14</div>
+<div class="text-[#56697d] text-xs">SDK 34 • Kernel 5.15</div>
+</div>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="bg-card-dark rounded-xl border border-border-dark p-4 flex flex-col gap-1">
+<div class="text-[#92adc9] text-xs font-medium uppercase tracking-wider mb-1">Commit</div>
+<div class="flex items-center gap-3">
+<div class="p-2 rounded bg-pink-500/10 text-pink-400">
+<span class="material-symbols-outlined">commit</span>
+</div>
+<div>
+<div class="text-white font-semibold font-mono">8f2a9c1</div>
+<div class="text-[#56697d] text-xs">feature/optimize-nms</div>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Quality Gates Section -->
+<div class="lg:col-span-1 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-white font-bold text-lg">Quality Gates</h3>
+<span class="text-xs text-[#92adc9] bg-[#1f2e3d] px-2 py-1 rounded">2 Pass, 1 Fail</span>
+</div>
+<div class="bg-card-dark rounded-xl border border-border-dark p-5 flex flex-col gap-6">
+<!-- Metric 1: Inference Time (Pass) -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-end">
+<span class="text-[#92adc9] text-sm font-medium">Inference Time</span>
+<div class="text-right">
+<span class="text-emerald-400 font-bold font-mono">14ms</span>
+<span class="text-[#56697d] text-xs ml-1">/ &lt;15ms</span>
+</div>
+</div>
+<div class="relative h-2 w-full bg-[#1f2e3d] rounded-full overflow-hidden">
+<!-- Marker for Threshold (15ms is slightly more than 14ms) -->
+<div class="absolute top-0 bottom-0 w-0.5 bg-white z-10 opacity-30" style="left: 90%"></div>
+<!-- Progress Bar -->
+<div class="h-full bg-emerald-500 rounded-full" style="width: 85%;"></div>
+</div>
+</div>
+<!-- Metric 2: Peak Memory (Fail) -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-end">
+<span class="text-[#92adc9] text-sm font-medium">Peak Memory (MB)</span>
+<div class="text-right">
+<span class="text-red-500 font-bold font-mono">128MB</span>
+<span class="text-[#56697d] text-xs ml-1">/ &lt;100MB</span>
+</div>
+</div>
+<div class="relative h-2 w-full bg-[#1f2e3d] rounded-full overflow-hidden">
+<!-- Marker for Threshold (100MB) -->
+<div class="absolute top-0 bottom-0 w-0.5 bg-white z-10 opacity-30" style="left: 78%"></div>
+<!-- Progress Bar (Overshoot) -->
+<div class="h-full bg-red-500 rounded-full" style="width: 100%;"></div>
+</div>
+<p class="text-red-400/80 text-xs mt-0.5 flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">warning</span>
+                                Exceeded threshold by 28%
+                            </p>
+</div>
+<!-- Metric 3: Accuracy (Pass) -->
+<div class="flex flex-col gap-2">
+<div class="flex justify-between items-end">
+<span class="text-[#92adc9] text-sm font-medium">mAP @ 0.5</span>
+<div class="text-right">
+<span class="text-emerald-400 font-bold font-mono">0.89</span>
+<span class="text-[#56697d] text-xs ml-1">/ &gt;0.85</span>
+</div>
+</div>
+<div class="relative h-2 w-full bg-[#1f2e3d] rounded-full overflow-hidden">
+<!-- Marker for Threshold -->
+<div class="absolute top-0 bottom-0 w-0.5 bg-white z-10 opacity-30" style="left: 85%"></div>
+<!-- Progress Bar -->
+<div class="h-full bg-emerald-500 rounded-full" style="width: 89%;"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Performance Chart Section -->
+<div class="lg:col-span-2 flex flex-col gap-4">
+<div class="flex items-center justify-between">
+<h3 class="text-white font-bold text-lg">Performance Analysis</h3>
+<div class="flex gap-2">
+<span class="text-xs font-medium text-white px-3 py-1 bg-primary/20 rounded-full border border-primary/30">Latency</span>
+<span class="text-xs font-medium text-[#92adc9] px-3 py-1 hover:bg-[#1f2e3d] rounded-full cursor-pointer transition-colors">Memory</span>
+</div>
+</div>
+<div class="bg-card-dark rounded-xl border border-border-dark p-5 h-[280px] relative flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<div>
+<div class="text-xs text-[#92adc9]">Avg Latency</div>
+<div class="text-xl font-bold text-white font-mono">14.2 ms</div>
+</div>
+<div>
+<div class="text-xs text-[#92adc9] text-right">Max Spike</div>
+<div class="text-xl font-bold text-red-400 font-mono text-right">42.1 ms</div>
+</div>
+</div>
+<!-- Simulated Chart Area -->
+<div class="flex-1 w-full relative">
+<!-- Y-Axis Labels -->
+<div class="absolute left-0 top-0 bottom-6 w-8 flex flex-col justify-between text-[10px] text-[#56697d] font-mono">
+<span>50ms</span>
+<span>40ms</span>
+<span>30ms</span>
+<span>20ms</span>
+<span>10ms</span>
+<span>0ms</span>
+</div>
+<!-- Chart Content -->
+<div class="absolute left-10 right-0 top-2 bottom-6">
+<!-- Grid Lines -->
+<div class="w-full h-full flex flex-col justify-between border-l border-b border-[#2a3b4d]">
+<div class="w-full h-px bg-[#2a3b4d]/30"></div>
+<div class="w-full h-px bg-[#2a3b4d]/30"></div>
+<div class="w-full h-px bg-[#2a3b4d]/30"></div>
+<div class="w-full h-px bg-[#2a3b4d]/30"></div>
+<div class="w-full h-px bg-[#2a3b4d]/30"></div>
+</div>
+<!-- The Line (SVG) -->
+<svg class="absolute inset-0 w-full h-full overflow-visible" preserveaspectratio="none">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#2b8cee" stop-opacity="0.4"></stop>
+<stop offset="100%" stop-color="#2b8cee" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0,130 L20,128 L40,132 L60,125 L80,128 L100,120 L120,125 L140,110 L160,125 L180,120 L200,122 L220,118 L240,120 L260,115 L280,118 L300,110 L320,115 L340,100 L360,110 L380,80 L400,20 L420,60 L440,100 L460,115 L480,120 L500,125 L520,128 L540,130 L560,132 L580,130 L600,128" fill="url(#chartGradient)" stroke="#2b8cee" stroke-width="2" vector-effect="non-scaling-stroke"></path>
+<!-- Spike Highlight Circle -->
+<circle cx="400" cy="20" fill="#ef4444" r="4" stroke="#182430" stroke-width="2"></circle>
+</svg>
+<!-- X-Axis Labels -->
+<div class="absolute -bottom-6 left-0 right-0 flex justify-between text-[10px] text-[#56697d] font-mono pt-2">
+<span>0s</span>
+<span>0.5s</span>
+<span>1.0s</span>
+<span>1.5s</span>
+<span>2.0s</span>
+<span>2.5s</span>
+<span>3.0s</span>
+<span>3.5s</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Layer Breakdown Table -->
+<div class="flex flex-col gap-4 pb-8">
+<div class="flex items-center justify-between">
+<h3 class="text-white font-bold text-lg">Layer Breakdown</h3>
+<div class="flex gap-2">
+<!-- Search Input -->
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#92adc9] text-lg">search</span>
+<input class="h-9 pl-9 pr-4 rounded-lg bg-[#182430] border border-border-dark text-sm text-white placeholder-[#56697d] focus:outline-none focus:ring-1 focus:ring-primary w-64" placeholder="Filter layers..." type="text"/>
+</div>
+<button class="flex items-center gap-2 h-9 px-3 rounded-lg border border-border-dark hover:bg-[#2a3b4d] text-[#92adc9] text-sm transition-colors">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+                            Filter
+                         </button>
+</div>
+</div>
+<div class="bg-card-dark rounded-xl border border-border-dark overflow-hidden">
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-[#1f2e3d] border-b border-border-dark">
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9]">Layer Name</th>
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9]">Op Type</th>
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9] text-right">NPU (ms)</th>
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9] text-right">GPU (ms)</th>
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9] text-right">CPU (ms)</th>
+<th class="py-3 px-6 text-xs font-semibold uppercase tracking-wider text-[#92adc9] text-right">Total (ms)</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-dark">
+<!-- Row 1 -->
+<tr class="hover:bg-[#1f2e3d]/50 transition-colors">
+<td class="py-3 px-6 text-sm font-medium text-white font-mono">conv2d_0</td>
+<td class="py-3 px-6 text-sm text-[#92adc9]">Conv2D</td>
+<td class="py-3 px-6 text-sm text-emerald-400 font-mono text-right">0.42</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.02</td>
+<td class="py-3 px-6 text-sm text-white font-mono text-right">0.44</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-[#1f2e3d]/50 transition-colors">
+<td class="py-3 px-6 text-sm font-medium text-white font-mono">batch_norm_0</td>
+<td class="py-3 px-6 text-sm text-[#92adc9]">BatchNorm</td>
+<td class="py-3 px-6 text-sm text-emerald-400 font-mono text-right">0.12</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.01</td>
+<td class="py-3 px-6 text-sm text-white font-mono text-right">0.13</td>
+</tr>
+<!-- Row 3 (Problematic Row) -->
+<tr class="bg-red-500/5 hover:bg-red-500/10 transition-colors">
+<td class="py-3 px-6 text-sm font-medium text-white font-mono flex items-center gap-2">
+                                        custom_nms_layer
+                                        <span class="material-symbols-outlined text-sm text-red-500" title="Fallback to CPU detected">warning</span>
+</td>
+<td class="py-3 px-6 text-sm text-[#92adc9]">CustomOp</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-red-400 font-bold font-mono text-right">4.85</td>
+<td class="py-3 px-6 text-sm text-white font-mono text-right font-bold">4.85</td>
+</tr>
+<!-- Row 4 -->
+<tr class="hover:bg-[#1f2e3d]/50 transition-colors">
+<td class="py-3 px-6 text-sm font-medium text-white font-mono">conv2d_1</td>
+<td class="py-3 px-6 text-sm text-[#92adc9]">Conv2D</td>
+<td class="py-3 px-6 text-sm text-emerald-400 font-mono text-right">0.88</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.05</td>
+<td class="py-3 px-6 text-sm text-white font-mono text-right">0.93</td>
+</tr>
+<!-- Row 5 -->
+<tr class="hover:bg-[#1f2e3d]/50 transition-colors">
+<td class="py-3 px-6 text-sm font-medium text-white font-mono">max_pool_1</td>
+<td class="py-3 px-6 text-sm text-[#92adc9]">MaxPool</td>
+<td class="py-3 px-6 text-sm text-emerald-400 font-mono text-right">0.15</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.00</td>
+<td class="py-3 px-6 text-sm text-[#56697d] font-mono text-right">0.01</td>
+<td class="py-3 px-6 text-sm text-white font-mono text-right">0.16</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination -->
+<div class="border-t border-border-dark bg-[#1f2e3d] px-6 py-3 flex items-center justify-between">
+<span class="text-xs text-[#92adc9]">Showing 1-5 of 128 layers</span>
+<div class="flex gap-1">
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-[#2a3b4d] text-[#92adc9] disabled:opacity-50">
+<span class="material-symbols-outlined text-lg">chevron_left</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center rounded bg-primary text-white font-bold text-xs">1</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-[#2a3b4d] text-[#92adc9] text-xs">2</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-[#2a3b4d] text-[#92adc9] text-xs">3</button>
+<button class="w-8 h-8 flex items-center justify-center rounded hover:bg-[#2a3b4d] text-[#92adc9]">
+<span class="material-symbols-outlined text-lg">chevron_right</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

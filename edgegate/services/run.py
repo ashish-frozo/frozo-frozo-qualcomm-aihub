@@ -122,7 +122,7 @@ class GateResult:
     metric: str
     operator: str
     threshold: float
-    actual_value: float
+    actual_value: Optional[float]
     passed: bool
     description: Optional[str] = None
 
@@ -166,7 +166,7 @@ def evaluate_gate(
             metric=metric,
             operator=operator,
             threshold=threshold,
-            actual_value=float('nan'),
+            actual_value=None,
             passed=False,
             description=f"Metric '{metric}' not available",
         )

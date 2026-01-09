@@ -594,10 +594,18 @@ def collect_results(
         raw_metrics = profile_result.metrics or {}
         raw_profile = profile_result.raw_profile or {}
         
+        def safe_float(v, default=0.0):
+            try:
+                import math
+                val = float(v)
+                return default if math.isnan(val) else val
+            except (TypeError, ValueError):
+                return default
+
         # Normalize metrics to expected format
         measurements = [{
-            "inference_time_ms": raw_metrics.get("inference_time_ms", 0.0),
-            "peak_memory_mb": raw_metrics.get("peak_memory_mb", 0.0),
+            "inference_time_ms": safe_float(raw_metrics.get("inference_time_ms")),
+            "peak_memory_mb": safe_float(raw_metrics.get("peak_memory_mb")),
         }]
         
         # Include compute unit breakdown if available

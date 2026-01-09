@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Install hatch for building the package
-RUN pip install --no-cache-dir hatch
+RUN pip install --no-cache-dir --default-timeout=100 hatch
 
 # Copy project files
 COPY pyproject.toml README.md ./
@@ -34,7 +34,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=builder /app/dist/*.whl .
 
 # Install the package and its dependencies
-RUN pip install --no-cache-dir *.whl
+RUN pip install --no-cache-dir --default-timeout=100 *.whl
 
 # Copy alembic for migrations
 COPY alembic ./alembic

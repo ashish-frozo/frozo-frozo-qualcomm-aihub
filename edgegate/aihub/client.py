@@ -337,16 +337,8 @@ class QAIHubClient:
             for d in devices
         ]
 
-    async def submit_compile_job(
-        self,
-        model_path: str,
-        device_name: str,
-        input_specs: Dict[str, tuple],
-        target_runtime: TargetRuntime = TargetRuntime.TFLITE,
-        options: Optional[str] = None,
-    ) -> str:
-        """Submit a compilation job."""
-        import asyncio
+    def _get_hub_device(self, device_name: str):
+        """Get a hub.Device object, handling mapping and fuzzy matching."""
         hub = self._get_hub()
         
         # Map device name if it's an alias or chipset ID
@@ -355,7 +347,7 @@ class QAIHubClient:
         # Validate device name
         try:
             # Try to get the device directly
-            hub_device = hub.Device(mapped_device)
+            return hub.Device(mapped_device)
         except Exception:
             # If failed, try to find a match in available devices
             import logging
@@ -371,11 +363,24 @@ class QAIHubClient:
             
             if match:
                 logger.info(f"Found matching device: {match.name}")
-                hub_device = match
+                return match
             else:
                 logger.error(f"No matching device found for '{device_name}'")
                 # Fallback to default if everything fails, or re-raise
-                hub_device = hub.Device("Samsung Galaxy S24 (Family)")
+                return hub.Device("Samsung Galaxy S24 (Family)")
+
+    async def submit_compile_job(
+        self,
+        model_path: str,
+        device_name: str,
+        input_specs: Dict[str, tuple],
+        target_runtime: TargetRuntime = TargetRuntime.TFLITE,
+        options: Optional[str] = None,
+    ) -> str:
+        """Submit a compilation job."""
+        import asyncio
+        hub = self._get_hub()
+        hub_device = self._get_hub_device(device_name)
         
         compile_options = ""
         if target_runtime != TargetRuntime.TFLITE:
@@ -402,6 +407,7 @@ class QAIHubClient:
         
         def get_status():
             job = hub.get_job(job_id)
+            hub_status = job.get_status()
             status_map = {
                 'PENDING': JobStatus.PENDING,
                 'RUNNING': JobStatus.RUNNING,
@@ -411,9 +417,9 @@ class QAIHubClient:
             }
             return JobInfo(
                 job_id=job_id,
-                status=status_map.get(job.status, JobStatus.PENDING),
+                status=status_map.get(hub_status.code, JobStatus.PENDING),
                 job_type=getattr(job, 'job_type', 'unknown'),
-                error_message=getattr(job, 'error', None),
+                error_message=hub_status.message if hub_status.code == 'FAILED' else None,
             )
         
         loop = asyncio.get_event_loop()
@@ -447,11 +453,12 @@ class QAIHubClient:
         """Submit a profiling job."""
         import asyncio
         hub = self._get_hub()
+        hub_device = self._get_hub_device(device_name)
         
         def submit():
             job = hub.submit_profile_job(
                 model=model_url,
-                device=hub.Device(device_name),
+                device=hub_device,
             )
             return str(job.job_id)
         
@@ -493,11 +500,12 @@ class QAIHubClient:
         """Submit an inference job."""
         import asyncio
         hub = self._get_hub()
+        hub_device = self._get_hub_device(device_name)
         
         def submit():
             job = hub.submit_inference_job(
                 model=model_url,
-                device=hub.Device(device_name),
+                device=hub_device,
                 inputs=inputs,
             )
             return str(job.job_id)

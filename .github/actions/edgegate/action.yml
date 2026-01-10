@@ -1,0 +1,166 @@
+# EdgeGate GitHub Action
+#
+# This action triggers EdgeGate AI regression tests on your model.
+# Add this to your repository to automatically test on-device AI performance.
+#
+# Required setup:
+# 1. Create an EdgeGate account and workspace
+# 2. Upload your model as a Model Artifact
+# 3. Create a Pipeline with quality gates
+# 4. Add secrets to your repo: EDGEGATE_WORKSPACE_ID, EDGEGATE_API_SECRET
+#
+# Usage:
+#   - uses: ./.github/actions/edgegate
+#     with:
+#       workspace-id: ${{ secrets.EDGEGATE_WORKSPACE_ID }}
+#       api-secret: ${{ secrets.EDGEGATE_API_SECRET }}
+#       pipeline-id: "your-pipeline-uuid"
+#       model-artifact-id: "your-model-artifact-uuid"
+
+name: 'EdgeGate AI Regression Test'
+description: 'Run on-device AI performance tests via Qualcomm AI Hub'
+author: 'EdgeGate Team'
+
+branding:
+  icon: 'cpu'
+  color: 'blue'
+
+inputs:
+  api-url:
+    description: 'EdgeGate API URL'
+    required: false
+    default: 'https://edgegate-api.railway.app'
+  workspace-id:
+    description: 'EdgeGate Workspace UUID'
+    required: true
+  api-secret:
+    description: 'EdgeGate API Secret for HMAC authentication'
+    required: true
+  pipeline-id:
+    description: 'Pipeline UUID to run'
+    required: true
+  model-artifact-id:
+    description: 'Model Artifact UUID to test'
+    required: true
+  wait-for-completion:
+    description: 'Wait for the run to complete'
+    required: false
+    default: 'true'
+  timeout-minutes:
+    description: 'Maximum time to wait for completion'
+    required: false
+    default: '30'
+
+outputs:
+  run-id:
+    description: 'The EdgeGate Run ID'
+    value: ${{ steps.trigger.outputs.run-id }}
+  status:
+    description: 'Final run status (passed, failed, error)'
+    value: ${{ steps.wait.outputs.status }}
+  gate-result:
+    description: 'Quality gate result'
+    value: ${{ steps.wait.outputs.gate-result }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Trigger EdgeGate Run
+      id: trigger
+      shell: bash
+      run: |
+        echo "🚀 Triggering EdgeGate AI regression test..."
+        
+        # Generate HMAC signature
+        TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        NONCE=$(uuidgen || cat /proc/sys/kernel/random/uuid)
+        BODY='{"pipeline_id":"${{ inputs.pipeline-id }}","model_artifact_id":"${{ inputs.model-artifact-id }}","commit_sha":"${{ github.sha }}","branch":"${{ github.ref_name }}","pull_request":${{ github.event.pull_request.number || 'null' }}}'
+        
+        # Create signature payload
+        PAYLOAD="${TIMESTAMP}\n${NONCE}\n${BODY}"
+        
+        # Compute HMAC-SHA256
+        SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "${{ inputs.api-secret }}" | cut -d' ' -f2)
+        
+        # Make API request
+        RESPONSE=$(curl -s -X POST \
+          "${{ inputs.api-url }}/v1/ci/github/run" \
+          -H "Content-Type: application/json" \
+          -H "X-EdgeGate-Workspace: ${{ inputs.workspace-id }}" \
+          -H "X-EdgeGate-Timestamp: ${TIMESTAMP}" \
+          -H "X-EdgeGate-Nonce: ${NONCE}" \
+          -H "X-EdgeGate-Signature: ${SIGNATURE}" \
+          -d "${BODY}")
+        
+        echo "Response: ${RESPONSE}"
+        
+        # Extract run ID
+        RUN_ID=$(echo "${RESPONSE}" | jq -r '.run_id // empty')
+        
+        if [ -z "${RUN_ID}" ]; then
+          echo "❌ Failed to trigger EdgeGate run"
+          echo "${RESPONSE}" | jq .
+          exit 1
+        fi
+        
+        echo "✅ Run triggered: ${RUN_ID}"
+        echo "run-id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+    - name: Wait for Completion
+      id: wait
+      if: inputs.wait-for-completion == 'true'
+      shell: bash
+      run: |
+        echo "⏳ Waiting for EdgeGate run to complete..."
+        
+        RUN_ID="${{ steps.trigger.outputs.run-id }}"
+        TIMEOUT=${{ inputs.timeout-minutes }}
+        START_TIME=$(date +%s)
+        
+        while true; do
+          # Generate new signature for status check
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NONCE=$(uuidgen || cat /proc/sys/kernel/random/uuid)
+          PAYLOAD="${TIMESTAMP}\n${NONCE}\n"
+          SIGNATURE=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "${{ inputs.api-secret }}" | cut -d' ' -f2)
+          
+          STATUS_RESPONSE=$(curl -s -X GET \
+            "${{ inputs.api-url }}/v1/workspaces/${{ inputs.workspace-id }}/runs/${RUN_ID}" \
+            -H "X-EdgeGate-Workspace: ${{ inputs.workspace-id }}" \
+            -H "X-EdgeGate-Timestamp: ${TIMESTAMP}" \
+            -H "X-EdgeGate-Nonce: ${NONCE}" \
+            -H "X-EdgeGate-Signature: ${SIGNATURE}")
+          
+          STATUS=$(echo "${STATUS_RESPONSE}" | jq -r '.status // "unknown"')
+          GATE_RESULT=$(echo "${STATUS_RESPONSE}" | jq -r '.gate_result // "pending"')
+          
+          echo "Status: ${STATUS}, Gate: ${GATE_RESULT}"
+          
+          if [[ "${STATUS}" == "completed" || "${STATUS}" == "failed" || "${STATUS}" == "error" ]]; then
+            echo "status=${STATUS}" >> $GITHUB_OUTPUT
+            echo "gate-result=${GATE_RESULT}" >> $GITHUB_OUTPUT
+            
+            if [[ "${GATE_RESULT}" == "pass" ]]; then
+              echo "✅ Quality gates PASSED!"
+              exit 0
+            elif [[ "${GATE_RESULT}" == "fail" ]]; then
+              echo "❌ Quality gates FAILED!"
+              echo ""
+              echo "View full results: ${{ inputs.api-url }}/workspace/${{ inputs.workspace-id }}/runs/${RUN_ID}"
+              exit 1
+            else
+              echo "⚠️ Run completed with status: ${STATUS}"
+              exit 1
+            fi
+          fi
+          
+          # Check timeout
+          ELAPSED=$(($(date +%s) - START_TIME))
+          if [ $ELAPSED -ge $((TIMEOUT * 60)) ]; then
+            echo "❌ Timeout waiting for EdgeGate run"
+            echo "status=timeout" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          sleep 30
+        done

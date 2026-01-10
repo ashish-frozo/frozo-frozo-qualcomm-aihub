@@ -1,0 +1,147 @@
+# EdgeGate AI Regression Tests
+# 
+# This workflow runs on-device AI performance tests via Qualcomm AI Hub.
+# Triggered on every PR to ensure model changes don't regress performance.
+#
+# Setup:
+# 1. Add this file to your repository as .github/workflows/edgegate.yml
+# 2. Add repository secrets:
+#    - EDGEGATE_WORKSPACE_ID: Your EdgeGate workspace UUID
+#    - EDGEGATE_API_SECRET: Your workspace API secret
+# 3. Update the pipeline-id and model-artifact-id below
+
+name: EdgeGate AI Tests
+
+on:
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'models/**'      # Trigger on model file changes
+      - 'src/model/**'   # Or model source code changes
+  push:
+    branches: [main]
+  workflow_dispatch:     # Allow manual triggers
+
+env:
+  EDGEGATE_API_URL: https://edgegate-api.railway.app
+
+jobs:
+  ai-regression-test:
+    name: On-Device Performance Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trigger EdgeGate Run
+        id: edgegate
+        run: |
+          echo "🚀 Triggering EdgeGate AI regression test..."
+          
+          # Configuration
+          API_URL="${{ env.EDGEGATE_API_URL }}"
+          WORKSPACE_ID="${{ secrets.EDGEGATE_WORKSPACE_ID }}"
+          API_SECRET="${{ secrets.EDGEGATE_API_SECRET }}"
+          
+          # TODO: Replace these with your actual IDs from EdgeGate dashboard
+          PIPELINE_ID="00000000-0000-0000-0000-000000000000"
+          MODEL_ARTIFACT_ID="00000000-0000-0000-0000-000000000000"
+          
+          # Generate HMAC signature
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NONCE=$(uuidgen || cat /proc/sys/kernel/random/uuid || echo "nonce-$(date +%s)")
+          
+          # Build request body
+          BODY=$(cat <<EOF
+          {
+            "pipeline_id": "${PIPELINE_ID}",
+            "model_artifact_id": "${MODEL_ARTIFACT_ID}",
+            "commit_sha": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "pull_request": ${{ github.event.pull_request.number || 'null' }},
+            "workflow_run_id": "${{ github.run_id }}"
+          }
+          EOF
+          )
+          
+          # Create signature payload
+          PAYLOAD=$(printf "%s\n%s\n%s" "${TIMESTAMP}" "${NONCE}" "${BODY}")
+          
+          # Compute HMAC-SHA256 signature
+          SIGNATURE=$(echo -n "${PAYLOAD}" | openssl dgst -sha256 -hmac "${API_SECRET}" | awk '{print $2}')
+          
+          echo "Workspace: ${WORKSPACE_ID}"
+          echo "Timestamp: ${TIMESTAMP}"
+          
+          # Make API request
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST \
+            "${API_URL}/v1/ci/github/run" \
+            -H "Content-Type: application/json" \
+            -H "X-EdgeGate-Workspace: ${WORKSPACE_ID}" \
+            -H "X-EdgeGate-Timestamp: ${TIMESTAMP}" \
+            -H "X-EdgeGate-Nonce: ${NONCE}" \
+            -H "X-EdgeGate-Signature: ${SIGNATURE}" \
+            -d "${BODY}")
+          
+          # Parse response
+          HTTP_CODE=$(echo "${RESPONSE}" | tail -n1)
+          BODY_RESPONSE=$(echo "${RESPONSE}" | head -n-1)
+          
+          echo "HTTP Status: ${HTTP_CODE}"
+          echo "Response: ${BODY_RESPONSE}"
+          
+          if [[ "${HTTP_CODE}" != "202" ]]; then
+            echo "❌ Failed to trigger EdgeGate run"
+            exit 1
+          fi
+          
+          RUN_ID=$(echo "${BODY_RESPONSE}" | jq -r '.run_id')
+          echo "✅ EdgeGate run triggered: ${RUN_ID}"
+          echo "run_id=${RUN_ID}" >> $GITHUB_OUTPUT
+
+      - name: Wait for Results
+        id: results
+        run: |
+          RUN_ID="${{ steps.edgegate.outputs.run_id }}"
+          WORKSPACE_ID="${{ secrets.EDGEGATE_WORKSPACE_ID }}"
+          API_URL="${{ env.EDGEGATE_API_URL }}"
+          
+          echo "⏳ Waiting for EdgeGate run ${RUN_ID}..."
+          echo "View live results: ${API_URL}/workspace/${WORKSPACE_ID}/runs/${RUN_ID}"
+          
+          # Poll for completion (30 minute timeout)
+          for i in {1..60}; do
+            sleep 30
+            
+            # In production, you'd make an authenticated request here
+            # For now, we'll keep it simple
+            echo "Checking status... (${i}/60)"
+            
+            # TODO: Add status check API call
+          done
+          
+          echo "⚠️ Polling complete. Check EdgeGate dashboard for results."
+
+      - name: Post Results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const runId = '${{ steps.edgegate.outputs.run_id }}';
+            const dashboardUrl = `${{ env.EDGEGATE_API_URL }}/workspace/${{ secrets.EDGEGATE_WORKSPACE_ID }}/runs/${runId}`;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔬 EdgeGate AI Performance Test
+              
+              An on-device AI regression test has been triggered on Qualcomm Snapdragon hardware.
+              
+              **Run ID:** \`${runId}\`
+              
+              📊 [View Full Results](${dashboardUrl})
+              
+              *Results will be available once the run completes.*`
+            });

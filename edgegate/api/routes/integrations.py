@@ -398,6 +398,7 @@ async def generate_ci_secret(
     Requires owner role.
     """
     import secrets
+    import base64
     from datetime import datetime, timezone
     from edgegate.db.models import Workspace
     from sqlalchemy import select
@@ -405,9 +406,10 @@ async def generate_ci_secret(
     # Generate a secure random secret
     secret = secrets.token_urlsafe(32)
     
-    # Encrypt it for storage (so we can decrypt for HMAC verification)
+    # Encrypt it for storage using wrap_key (returns bytes: nonce + ciphertext)
     kms = get_kms()
-    encrypted_secret = kms.encrypt(secret.encode()).decode()
+    encrypted_bytes = kms.wrap_key(secret.encode())
+    encrypted_secret = base64.b64encode(encrypted_bytes).decode()
     
     # Update workspace
     result = await session.execute(

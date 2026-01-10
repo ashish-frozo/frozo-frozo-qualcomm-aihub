@@ -221,8 +221,10 @@ async def get_ci_workspace(
     # Check if workspace has a CI secret configured
     if workspace.ci_secret_hash:
         # Decrypt the stored secret for HMAC verification
+        import base64
         try:
-            signing_secret = kms.decrypt(workspace.ci_secret_hash.encode()).decode()
+            encrypted_bytes = base64.b64decode(workspace.ci_secret_hash.encode())
+            signing_secret = kms.unwrap_key(encrypted_bytes).decode()
         except Exception:
             # If decryption fails, fall back to derived secret
             signing_secret = hmac.new(

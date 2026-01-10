@@ -27,7 +27,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
@@ -48,7 +48,7 @@ jobs:
     needs: deploy-backend
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Railway CLI
         run: npm install -g @railway/cli
@@ -69,7 +69,7 @@ jobs:
     environment: ${{ github.event.inputs.environment || 'production' }}
     
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up Python
         uses: actions/setup-python@v5

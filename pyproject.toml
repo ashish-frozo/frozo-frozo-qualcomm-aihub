@@ -66,10 +66,15 @@ dependencies = [
     # HTTP client
     "httpx>=0.26.0",
     
+    # Monitoring & Logging
+    "sentry-sdk[fastapi]>=1.40.0",
+    "structlog>=24.1.0",
+    
     # Utils
     "python-multipart>=0.0.6",
     "python-dateutil>=2.8.2",
 ]
+
 
 [project.optional-dependencies]
 dev = [

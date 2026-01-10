@@ -13,6 +13,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from edgegate.core import get_settings
+from edgegate.core.logging import setup_logging, get_logger
+from edgegate.core.sentry import init_sentry
 from edgegate.db.session import close_db
 from edgegate.api.routes import (
     auth_router,
@@ -38,7 +40,22 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     settings = get_settings()
-    print(f"Starting EdgeGate API in {settings.app_env} mode")
+    
+    # Initialize structured logging
+    setup_logging(
+        log_level=os.environ.get("LOG_LEVEL", "INFO"),
+        json_format=settings.app_env != "development",
+        app_env=settings.app_env,
+    )
+    logger = get_logger("edgegate.api")
+    
+    # Initialize Sentry error tracking
+    init_sentry(
+        environment=settings.app_env,
+        traces_sample_rate=0.1 if settings.app_env == "production" else 0.0,
+    )
+    
+    logger.info("starting_api", environment=settings.app_env)
     
     # Validate required secrets in production
     if settings.app_env == "production":
@@ -48,6 +65,7 @@ async def lifespan(app: FastAPI):
             raise RuntimeError("EDGEGENAI_MASTER_KEY is required in production")
     
     yield
+
     
     # Shutdown
     await close_db()

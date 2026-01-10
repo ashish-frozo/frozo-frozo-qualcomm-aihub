@@ -218,13 +218,25 @@ async def get_ci_workspace(
         )
     
     # Get the signing secret for this workspace
-    # In production, this would be workspace.ci_signing_secret
-    # For now, use a derived secret from workspace ID
-    signing_secret = hmac.new(
-        settings.edgegenai_master_key.encode(),
-        str(workspace.id).encode(),
-        hashlib.sha256,
-    ).hexdigest()
+    # Check if workspace has a CI secret configured
+    if workspace.ci_secret_hash:
+        # Decrypt the stored secret for HMAC verification
+        try:
+            signing_secret = kms.decrypt(workspace.ci_secret_hash.encode()).decode()
+        except Exception:
+            # If decryption fails, fall back to derived secret
+            signing_secret = hmac.new(
+                settings.edgegenai_master_key.encode(),
+                str(workspace.id).encode(),
+                hashlib.sha256,
+            ).hexdigest()
+    else:
+        # Fallback: derive secret from workspace ID (for workspaces without CI secret)
+        signing_secret = hmac.new(
+            settings.edgegenai_master_key.encode(),
+            str(workspace.id).encode(),
+            hashlib.sha256,
+        ).hexdigest()
     
     # Get request body
     body = await request.body()

@@ -33,6 +33,10 @@ export default function SettingsPage() {
     const [saving, setSaving] = useState(false);
     const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
     const [error, setError] = useState("");
+    // CI Secret state
+    const [ciSecretStatus, setCiSecretStatus] = useState<{ has_secret: boolean; created_at?: string } | null>(null);
+    const [generatedSecret, setGeneratedSecret] = useState<string | null>(null);
+    const [generatingSecret, setGeneratingSecret] = useState(false);
 
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -61,10 +65,26 @@ export default function SettingsPage() {
                 setWorkspace(wsData);
             }
 
-            const intRes = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/qaihub`, { headers });
-            if (intRes.ok) {
-                const intData = await intRes.json();
-                setIntegration(intData);
+            // Fetch AI Hub integration
+            try {
+                const intRes = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/qaihub`, { headers });
+                if (intRes.ok) {
+                    const intData = await intRes.json();
+                    setIntegration(intData);
+                }
+            } catch (e) {
+                // Integration may not exist
+            }
+
+            // Fetch CI secret status
+            try {
+                const ciRes = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/ci-secret`, { headers });
+                if (ciRes.ok) {
+                    const ciData = await ciRes.json();
+                    setCiSecretStatus(ciData);
+                }
+            } catch (e) {
+                // CI secret may not exist
             }
         } catch (err) {
             console.error("Failed to fetch data", err);
@@ -72,6 +92,7 @@ export default function SettingsPage() {
             setLoading(false);
         }
     };
+
 
     const connectToken = async () => {
         const headers = getAuthHeader();
@@ -192,6 +213,60 @@ export default function SettingsPage() {
         }
     };
 
+    // CI Secret management
+    const generateCiSecret = async () => {
+        const headers = getAuthHeader();
+        if (!headers) return;
+
+        setGeneratingSecret(true);
+        setGeneratedSecret(null);
+        setError("");
+
+        try {
+            const res = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/ci-secret`, {
+                method: "POST",
+                headers,
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setGeneratedSecret(data.secret);
+                setCiSecretStatus({ has_secret: true, created_at: new Date().toISOString() });
+            } else {
+                const data = await res.json();
+                setError(data.detail || "Failed to generate CI secret");
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to generate CI secret");
+        } finally {
+            setGeneratingSecret(false);
+        }
+    };
+
+    const revokeCiSecret = async () => {
+        const headers = getAuthHeader();
+        if (!headers) return;
+
+        if (!confirm("Are you sure? Any CI integrations using this secret will stop working.")) return;
+
+        try {
+            const res = await fetch(`${apiUrl}/v1/workspaces/${workspaceId}/integrations/ci-secret`, {
+                method: "DELETE",
+                headers,
+            });
+
+            if (res.ok || res.status === 204) {
+                setCiSecretStatus({ has_secret: false });
+                setGeneratedSecret(null);
+            } else {
+                const data = await res.json();
+                setError(data.detail || "Failed to revoke CI secret");
+            }
+        } catch (err: any) {
+            setError(err.message || "Failed to revoke CI secret");
+        }
+    };
+
     if (loading) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center">
@@ -240,8 +315,8 @@ export default function SettingsPage() {
                             </div>
                             {integration && (
                                 <span className={`px-3 py-1.5 rounded-lg text-sm font-bold ${integration.status === "active"
-                                        ? "bg-green-500/10 text-green-400 border border-green-500/20"
-                                        : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
+                                    ? "bg-green-500/10 text-green-400 border border-green-500/20"
+                                    : "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20"
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px] mr-1 align-text-bottom">
                                         {integration.status === "active" ? "check_circle" : "pause_circle"}
@@ -373,8 +448,8 @@ export default function SettingsPage() {
                             )}
                             {testResult && (
                                 <div className={`p-3 rounded-lg text-sm flex items-center gap-2 ${testResult.success
-                                        ? "bg-green-500/10 border border-green-500/30 text-green-400"
-                                        : "bg-destructive/10 border border-destructive/30 text-destructive"
+                                    ? "bg-green-500/10 border border-green-500/30 text-green-400"
+                                    : "bg-destructive/10 border border-destructive/30 text-destructive"
                                     }`}>
                                     <span className="material-symbols-outlined text-lg">
                                         {testResult.success ? "check_circle" : "error"}
@@ -400,6 +475,104 @@ export default function SettingsPage() {
                                     <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Your Role</div>
                                     <div className="text-foreground capitalize">{workspace?.role || "—"}</div>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* CI Secret */}
+                    <div className="bg-card border border-border rounded-xl overflow-hidden">
+                        <div className="p-6 border-b border-border">
+                            <h2 className="text-lg font-bold text-foreground">CI/CD Integration</h2>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Generate a secret to authenticate GitHub Actions with EdgeGate
+                            </p>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {generatedSecret && (
+                                <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                                    <div className="flex items-center gap-2 text-green-400 mb-2">
+                                        <span className="material-symbols-outlined">key</span>
+                                        <span className="font-medium">Your CI Secret (copy now - shown only once!)</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 p-3 bg-black/50 rounded font-mono text-sm text-green-300 break-all">
+                                            {generatedSecret}
+                                        </code>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={() => {
+                                                navigator.clipboard.writeText(generatedSecret);
+                                                alert("Copied to clipboard!");
+                                            }}
+                                            className="border-green-500/50 text-green-400"
+                                        >
+                                            Copy
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {ciSecretStatus?.has_secret && !generatedSecret && (
+                                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                                    <div>
+                                        <div className="flex items-center gap-2 text-foreground">
+                                            <span className="material-symbols-outlined text-primary">verified</span>
+                                            <span>CI Secret configured</span>
+                                        </div>
+                                        {ciSecretStatus.created_at && (
+                                            <div className="text-xs text-muted-foreground mt-1">
+                                                Created: {new Date(ciSecretStatus.created_at).toLocaleDateString()}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            onClick={generateCiSecret}
+                                            disabled={generatingSecret}
+                                        >
+                                            Regenerate
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="destructive"
+                                            onClick={revokeCiSecret}
+                                        >
+                                            Revoke
+                                        </Button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {!ciSecretStatus?.has_secret && !generatedSecret && (
+                                <div className="text-center py-8">
+                                    <p className="text-muted-foreground mb-4">
+                                        No CI secret configured. Generate one to use EdgeGate from GitHub Actions.
+                                    </p>
+                                    <Button
+                                        onClick={generateCiSecret}
+                                        disabled={generatingSecret}
+                                        className="bg-gradient-to-r from-cyan-500 to-blue-500"
+                                    >
+                                        {generatingSecret ? "Generating..." : "Generate CI Secret"}
+                                    </Button>
+                                </div>
+                            )}
+
+                            <div className="text-xs text-muted-foreground border-t border-border pt-4 mt-4">
+                                <p className="font-medium mb-2">Usage in GitHub Actions:</p>
+                                <pre className="p-3 bg-muted/50 rounded text-xs overflow-x-auto">
+                                    {`# Add to repository secrets:
+# EDGEGATE_WORKSPACE_ID: ${workspaceId}
+# EDGEGATE_API_SECRET: <your-secret>
+
+- name: Trigger EdgeGate
+  env:
+    WORKSPACE_ID: \${{ secrets.EDGEGATE_WORKSPACE_ID }}
+    API_SECRET: \${{ secrets.EDGEGATE_API_SECRET }}`}
+                                </pre>
                             </div>
                         </div>
                     </div>

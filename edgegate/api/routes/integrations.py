@@ -320,3 +320,138 @@ async def delete_qaihub(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="AI Hub integration not found",
         )
+
+
+# ============================================================================
+# CI Secret Management
+# ============================================================================
+
+
+class CISecretResponse(BaseModel):
+    """Response for CI secret operations."""
+    
+    has_secret: bool
+    secret_last4: str | None = None
+    created_at: datetime | None = None
+    secret: str | None = None  # Only set on generation, never stored
+
+
+class CISecretGenerateResponse(BaseModel):
+    """Response when generating a new CI secret."""
+    
+    secret: str
+    message: str
+
+
+@router.get(
+    "/workspaces/{workspace_id}/integrations/ci-secret",
+    response_model=CISecretResponse,
+    summary="Get CI secret status",
+)
+async def get_ci_secret(
+    workspace: WorkspaceAdmin,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+) -> CISecretResponse:
+    """
+    Get the status of the CI secret for this workspace.
+    
+    Returns whether a secret exists and when it was created.
+    The actual secret is never returned after generation.
+    """
+    from edgegate.db.models import Workspace
+    from sqlalchemy import select
+    
+    result = await session.execute(
+        select(Workspace).where(Workspace.id == workspace.id)
+    )
+    ws = result.scalar_one()
+    
+    if ws.ci_secret_hash:
+        # Extract last 4 chars from hash (just for display, not actual secret)
+        return CISecretResponse(
+            has_secret=True,
+            secret_last4="****",  # We don't store the plain secret
+            created_at=ws.ci_secret_created_at,
+        )
+    else:
+        return CISecretResponse(has_secret=False)
+
+
+@router.post(
+    "/workspaces/{workspace_id}/integrations/ci-secret",
+    response_model=CISecretGenerateResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Generate CI secret",
+)
+async def generate_ci_secret(
+    workspace: WorkspaceOwner,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+) -> CISecretGenerateResponse:
+    """
+    Generate a new CI secret for this workspace.
+    
+    The secret is shown ONLY ONCE. Store it securely!
+    If a secret already exists, it will be replaced.
+    
+    Requires owner role.
+    """
+    import secrets
+    from datetime import datetime, timezone
+    from edgegate.db.models import Workspace
+    from sqlalchemy import select
+    
+    # Generate a secure random secret
+    secret = secrets.token_urlsafe(32)
+    
+    # Encrypt it for storage (so we can decrypt for HMAC verification)
+    kms = get_kms()
+    encrypted_secret = kms.encrypt(secret.encode()).decode()
+    
+    # Update workspace
+    result = await session.execute(
+        select(Workspace).where(Workspace.id == workspace.id)
+    )
+    ws = result.scalar_one()
+    
+    ws.ci_secret_hash = encrypted_secret
+    ws.ci_secret_created_at = datetime.now(timezone.utc)
+    
+    await session.commit()
+    
+    return CISecretGenerateResponse(
+        secret=secret,
+        message="CI secret generated. Store this securely - it will not be shown again!",
+    )
+
+
+@router.delete(
+    "/workspaces/{workspace_id}/integrations/ci-secret",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Revoke CI secret",
+)
+async def revoke_ci_secret(
+    workspace: WorkspaceOwner,
+    current_user: CurrentUser,
+    session: AsyncSession = Depends(get_session),
+) -> None:
+    """
+    Revoke the CI secret for this workspace.
+    
+    Any CI integrations using this secret will stop working.
+    
+    Requires owner role.
+    """
+    from edgegate.db.models import Workspace
+    from sqlalchemy import select
+    
+    result = await session.execute(
+        select(Workspace).where(Workspace.id == workspace.id)
+    )
+    ws = result.scalar_one()
+    
+    ws.ci_secret_hash = None
+    ws.ci_secret_created_at = None
+    
+    await session.commit()

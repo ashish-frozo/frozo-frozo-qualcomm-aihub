@@ -34,7 +34,7 @@ jobs:
         run: ruff check edgegate/
 
       - name: Run Ruff formatter check
-        run: ruff format --check edgerate/ || true
+        run: ruff format --check edgegate/ || true
 
   backend-test:
     name: Backend Tests

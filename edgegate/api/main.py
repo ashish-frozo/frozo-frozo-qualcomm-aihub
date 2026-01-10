@@ -6,6 +6,7 @@ EdgeGate API - Edge GenAI Regression Gates for Snapdragon
 
 from __future__ import annotations
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -25,6 +26,7 @@ from edgegate.api.routes import (
     ci_router,
     health_router,
 )
+from edgegate.api.middleware import RateLimitConfig, RateLimitMiddleware
 
 
 @asynccontextmanager
@@ -37,6 +39,13 @@ async def lifespan(app: FastAPI):
     # Startup
     settings = get_settings()
     print(f"Starting EdgeGate API in {settings.app_env} mode")
+    
+    # Validate required secrets in production
+    if settings.app_env == "production":
+        if not settings.jwt_secret_key or settings.jwt_secret_key == "":
+            raise RuntimeError("JWT_SECRET_KEY is required in production")
+        if not settings.edgegenai_master_key or settings.edgegenai_master_key == "":
+            raise RuntimeError("EDGEGENAI_MASTER_KEY is required in production")
     
     yield
     
@@ -64,6 +73,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Configure Rate Limiting
+    rate_limit_rpm = int(os.environ.get("RATE_LIMIT_REQUESTS_PER_MINUTE", "60"))
+    app.add_middleware(
+        RateLimitMiddleware,
+        config=RateLimitConfig(requests_per_minute=rate_limit_rpm),
+    )
+
     # Configure CORS
     app.add_middleware(
         CORSMiddleware,
@@ -72,6 +88,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
 
     # Root route
     @app.get("/", include_in_schema=False)

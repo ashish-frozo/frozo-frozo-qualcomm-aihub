@@ -38,20 +38,26 @@ jobs:
         run: |
           echo "🔐 Testing EdgeGate CI authentication..."
           
+          # Debug: Verify secrets are set
+          echo "Secret length: ${#API_SECRET}"
+          echo "Workspace ID: $WORKSPACE_ID"
+          
           # Generate timestamp and nonce
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NONCE=$(cat /proc/sys/kernel/random/uuid)
           
           # Build message for HMAC: "timestamp\nnonce\n" (with literal newlines)
           # Must match server: f"{timestamp}\n{nonce}\n".encode() + body
-          MESSAGE=$(printf '%s\n%s\n' "$TIMESTAMP" "$NONCE")
+          MESSAGE="${TIMESTAMP}
+${NONCE}
+"
           
-          # Debug: Show message bytes
-          echo "Debug - Message hex (first 60 bytes):"
-          printf '%s' "$MESSAGE" | head -c 60 | xxd
+          # Debug: Show full message bytes  
+          echo "Debug - Full message hex:"
+          echo -n "$MESSAGE" | xxd
           
-          # Compute HMAC-SHA256 signature
-          SIGNATURE=$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
+          # Compute HMAC-SHA256 signature using echo -n (matches working local test)
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
           
           echo "Timestamp: $TIMESTAMP"
           echo "Nonce: $NONCE"

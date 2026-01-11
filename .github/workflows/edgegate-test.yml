@@ -48,9 +48,8 @@ jobs:
           
           # Build message for HMAC: "timestamp\nnonce\n" (with literal newlines)
           # Must match server: f"{timestamp}\n{nonce}\n".encode() + body
-          MESSAGE="${TIMESTAMP}
-${NONCE}
-"
+          # Using $'...' syntax to get literal newlines
+          MESSAGE="$TIMESTAMP"$'\n'"$NONCE"$'\n'
           
           # Debug: Show full message bytes  
           echo "Debug - Full message hex:"

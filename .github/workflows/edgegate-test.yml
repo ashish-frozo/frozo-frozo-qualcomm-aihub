@@ -30,24 +30,32 @@ jobs:
 
       - name: Test EdgeGate CI Authentication
         id: auth-test
+        shell: bash
+        env:
+          API_URL: ${{ env.EDGEGATE_API_URL }}
+          WORKSPACE_ID: ${{ secrets.EDGEGATE_WORKSPACE_ID }}
+          API_SECRET: ${{ secrets.EDGEGATE_API_SECRET }}
         run: |
           echo "🔐 Testing EdgeGate CI authentication..."
           
-          API_URL="${{ env.EDGEGATE_API_URL }}"
-          WORKSPACE_ID="${{ secrets.EDGEGATE_WORKSPACE_ID }}"
-          API_SECRET="${{ secrets.EDGEGATE_API_SECRET }}"
-          
           # Generate timestamp and nonce
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          NONCE=$(uuidgen || cat /proc/sys/kernel/random/uuid)
+          NONCE=$(cat /proc/sys/kernel/random/uuid)
           
-          # Build message for HMAC (timestamp\nnonce\n for GET request)
-          MESSAGE=$(printf "%s\n%s\n" "$TIMESTAMP" "$NONCE")
+          # Build message for HMAC: "timestamp\nnonce\n" (with literal newlines)
+          # Must match server: f"{timestamp}\n{nonce}\n".encode() + body
+          MESSAGE=$(printf '%s\n%s\n' "$TIMESTAMP" "$NONCE")
+          
+          # Debug: Show message bytes
+          echo "Debug - Message hex (first 60 bytes):"
+          printf '%s' "$MESSAGE" | head -c 60 | xxd
           
           # Compute HMAC-SHA256 signature
-          SIGNATURE=$(printf "%s" "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
+          SIGNATURE=$(printf '%s' "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
           
           echo "Timestamp: $TIMESTAMP"
+          echo "Nonce: $NONCE"
+          echo "Signature: $SIGNATURE"
           echo "Calling: $API_URL/v1/ci/status"
           
           # Call CI status endpoint

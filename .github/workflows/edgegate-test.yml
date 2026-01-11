@@ -1,11 +1,14 @@
-# EdgeGate CI Test Workflow
+# EdgeGate CI Workflow
 # 
-# This workflow tests EdgeGate CI integration on PRs.
-# Add this to any repository as .github/workflows/edgegate-test.yml
+# Runs EdgeGate AI performance tests on PRs automatically.
+# Tests on-device AI model performance on Qualcomm Snapdragon hardware.
 #
-# Required Secrets:
-#   EDGEGATE_WORKSPACE_ID: 309e3854-d71b-45fa-8517-9f952342038e
-#   EDGEGATE_API_SECRET: Bu2xLeWOZAz3Kfk5E4fIeF5W2iUe9A35P1A4fo-BpCY
+# Setup:
+# 1. Add repository secrets (Settings → Secrets → Actions):
+#    - EDGEGATE_WORKSPACE_ID: Your workspace UUID
+#    - EDGEGATE_API_SECRET: Generated from EdgeGate Settings → Integrations
+#    - EDGEGATE_PIPELINE_ID: (Optional) Pipeline to run
+#    - EDGEGATE_MODEL_ARTIFACT_ID: (Optional) Model to test
 
 name: EdgeGate AI Test
 
@@ -14,21 +17,28 @@ on:
     branches: [main]
   push:
     branches: [main]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      pipeline_id:
+        description: 'Pipeline ID to run (optional)'
+        required: false
+      model_artifact_id:
+        description: 'Model Artifact ID to test (optional)'
+        required: false
 
 env:
   EDGEGATE_API_URL: https://frozo-frozo-qualcomm-aihub-production.up.railway.app
 
 jobs:
   edgegate-test:
-    name: EdgeGate CI Integration Test
+    name: EdgeGate AI Performance Test
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Test EdgeGate CI Authentication
+      - name: Test EdgeGate Authentication
         id: auth-test
         shell: bash
         env:
@@ -38,32 +48,16 @@ jobs:
         run: |
           echo "🔐 Testing EdgeGate CI authentication..."
           
-          # Debug: Verify secrets are set
-          echo "Secret length: ${#API_SECRET}"
-          echo "Workspace ID: $WORKSPACE_ID"
+          if [ -z "$API_SECRET" ]; then
+            echo "❌ EDGEGATE_API_SECRET not configured"
+            exit 1
+          fi
           
-          # Generate timestamp and nonce
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           NONCE=$(cat /proc/sys/kernel/random/uuid)
-          
-          # Build message for HMAC: "timestamp\nnonce\n" (with literal newlines)
-          # Must match server: f"{timestamp}\n{nonce}\n".encode() + body
-          # Using $'...' syntax to get literal newlines
           MESSAGE="$TIMESTAMP"$'\n'"$NONCE"$'\n'
-          
-          # Debug: Show full message bytes  
-          echo "Debug - Full message hex:"
-          echo -n "$MESSAGE" | xxd
-          
-          # Compute HMAC-SHA256 signature using echo -n (matches working local test)
           SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
           
-          echo "Timestamp: $TIMESTAMP"
-          echo "Nonce: $NONCE"
-          echo "Signature: $SIGNATURE"
-          echo "Calling: $API_URL/v1/ci/status"
-          
-          # Call CI status endpoint
           RESPONSE=$(curl -s -w "\n%{http_code}" "$API_URL/v1/ci/status" \
             -H "X-EdgeGate-Workspace: $WORKSPACE_ID" \
             -H "X-EdgeGate-Timestamp: $TIMESTAMP" \
@@ -71,38 +65,102 @@ jobs:
             -H "X-EdgeGate-Signature: $SIGNATURE")
           
           HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-          BODY=$(echo "$RESPONSE" | sed '$d')
-          
-          echo "Response: $BODY"
-          echo "HTTP Code: $HTTP_CODE"
           
           if [ "$HTTP_CODE" = "200" ]; then
-            echo "✅ EdgeGate CI authentication successful!"
-            echo "status=success" >> $GITHUB_OUTPUT
+            echo "✅ Authentication successful"
+            echo "authenticated=true" >> $GITHUB_OUTPUT
           else
-            echo "❌ EdgeGate CI authentication failed!"
-            echo "status=failed" >> $GITHUB_OUTPUT
+            echo "❌ Authentication failed (HTTP $HTTP_CODE)"
+            echo "authenticated=false" >> $GITHUB_OUTPUT
             exit 1
           fi
 
-      - name: Post Status Comment (on PR)
-        if: github.event_name == 'pull_request'
+      - name: Trigger EdgeGate Run
+        id: trigger-run
+        if: steps.auth-test.outputs.authenticated == 'true'
+        shell: bash
+        env:
+          API_URL: ${{ env.EDGEGATE_API_URL }}
+          WORKSPACE_ID: ${{ secrets.EDGEGATE_WORKSPACE_ID }}
+          API_SECRET: ${{ secrets.EDGEGATE_API_SECRET }}
+          PIPELINE_ID: ${{ github.event.inputs.pipeline_id || secrets.EDGEGATE_PIPELINE_ID }}
+          MODEL_ID: ${{ github.event.inputs.model_artifact_id || secrets.EDGEGATE_MODEL_ARTIFACT_ID }}
+        run: |
+          if [ -z "$PIPELINE_ID" ] || [ -z "$MODEL_ID" ]; then
+            echo "ℹ️ Pipeline/Model not configured - skipping run trigger"
+            echo "run_triggered=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          echo "🚀 Triggering EdgeGate performance test..."
+          
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          NONCE=$(cat /proc/sys/kernel/random/uuid)
+          
+          BODY=$(cat <<EOF
+          {
+            "pipeline_id": "$PIPELINE_ID",
+            "model_artifact_id": "$MODEL_ID",
+            "commit_sha": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "pull_request": ${{ github.event.pull_request.number || 'null' }},
+            "workflow_run_id": "${{ github.run_id }}"
+          }
+          EOF
+          )
+          
+          MESSAGE="$TIMESTAMP"$'\n'"$NONCE"$'\n'"$BODY"
+          SIGNATURE=$(echo -n "$MESSAGE" | openssl dgst -sha256 -hmac "$API_SECRET" | awk '{print $2}')
+          
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X POST "$API_URL/v1/ci/github/run" \
+            -H "Content-Type: application/json" \
+            -H "X-EdgeGate-Workspace: $WORKSPACE_ID" \
+            -H "X-EdgeGate-Timestamp: $TIMESTAMP" \
+            -H "X-EdgeGate-Nonce: $NONCE" \
+            -H "X-EdgeGate-Signature: $SIGNATURE" \
+            -d "$BODY")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY_RESPONSE=$(echo "$RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" = "202" ]; then
+            RUN_ID=$(echo "$BODY_RESPONSE" | jq -r '.run_id')
+            echo "✅ Run triggered: $RUN_ID"
+            echo "run_triggered=true" >> $GITHUB_OUTPUT
+            echo "run_id=$RUN_ID" >> $GITHUB_OUTPUT
+          else
+            echo "❌ Failed to trigger run (HTTP $HTTP_CODE)"
+            echo "$BODY_RESPONSE"
+            echo "run_triggered=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post PR Comment
+        if: github.event_name == 'pull_request' && steps.auth-test.outputs.authenticated == 'true'
         uses: actions/github-script@v7
         with:
           script: |
-            const status = '${{ steps.auth-test.outputs.status }}';
-            const emoji = status === 'success' ? '✅' : '❌';
+            const runTriggered = '${{ steps.trigger-run.outputs.run_triggered }}' === 'true';
+            const runId = '${{ steps.trigger-run.outputs.run_id }}';
+            const apiUrl = '${{ env.EDGEGATE_API_URL }}';
+            const workspaceId = '${{ secrets.EDGEGATE_WORKSPACE_ID }}';
+            
+            let body = `## 🔬 EdgeGate AI Performance Test\n\n`;
+            body += `**Authentication:** ✅ Successful\n\n`;
+            
+            if (runTriggered && runId) {
+              body += `**Run ID:** \`${runId}\`\n\n`;
+              body += `📊 [View Results](${apiUrl}/workspace/${workspaceId}/runs/${runId})\n\n`;
+              body += `*Testing on-device AI performance on Qualcomm Snapdragon hardware...*`;
+            } else {
+              body += `ℹ️ No pipeline configured - authentication test only.\n\n`;
+              body += `To run full performance tests, add \`EDGEGATE_PIPELINE_ID\` and \`EDGEGATE_MODEL_ARTIFACT_ID\` secrets.`;
+            }
+            
+            body += `\n\n---\n*Powered by [EdgeGate](${apiUrl}) - On-Device AI Regression Gates*`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## ${emoji} EdgeGate CI Test
-              
-              **Status:** ${status === 'success' ? 'Authentication Successful' : 'Authentication Failed'}
-              
-              The EdgeGate CI integration is ${status === 'success' ? 'working correctly' : 'not configured properly'}.
-              
-              ---
-              *Powered by EdgeGate - On-Device AI Performance Testing*`
+              body: body
             });

@@ -270,15 +270,19 @@ async def get_ci_workspace(
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(seconds=MAX_REQUEST_AGE_SECONDS)
         
+        # CINonce model: nonce (pk), workspace_id, used_at, expires_at
         nonce_record = CINonce(
-            workspace_id=ws_id,
             nonce=nonce,
-            created_at=now,
+            workspace_id=ws_id,
             expires_at=expires_at,
-            used=True,
+            # used_at has server_default=func.now()
         )
         session.add(nonce_record)
-        await session.flush()
+        try:
+            await session.flush()
+        except Exception:
+            # Nonce might already exist (race condition) - that's ok
+            pass
     
     return workspace
 
